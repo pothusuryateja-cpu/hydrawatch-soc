@@ -79,9 +79,8 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-
-
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "";
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 function RouteSyncer() {
   const location = useLocation();
@@ -106,6 +105,31 @@ function RouteSyncer() {
   return null;
 }
 
+function AppRoutes() {
+  return (
+    <BrowserRouter>
+      <RouteSyncer />
+      <Suspense fallback={<RouteLoading />}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route
+            path="/auth"
+            element={<AuthPage redirectAfterAuth="/dashboard" />}
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -113,30 +137,14 @@ createRoot(document.getElementById("root")!).render(
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
-      <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
-          <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-        <Toaster />
-      </ConvexAuthProvider>
+      {convex ? (
+        <ConvexAuthProvider client={convex}>
+          <AppRoutes />
+          <Toaster />
+        </ConvexAuthProvider>
+      ) : (
+        <AppRoutes />
+      )}
     </RootErrorBoundary>
   </StrictMode>,
 );
