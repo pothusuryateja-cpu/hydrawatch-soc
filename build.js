@@ -752,6 +752,757 @@ function deriveAttackVector(findings) {
   const parts = [];
   if (findings.some(f => /SQL Injection/i.test(f.title))) parts.push('SQL Injection');
   if (findings.some(f => /Brute-Force/i.test(f.title))) parts.push('SSH Brute-Force');
-  if (findings.some(f => /Privile
+  if (findings.some(f => /Privilege/i.test(f.title))) parts.push('Privilege Escalation');
+  if (findings.some(f => /Hardcoded.*Key/i.test(f.title))) parts.push('Secret Exposure');
+  if (findings.some(f => /SPF|DKIM|DMARC|Phishing|Spoofing/i.test(f.title))) parts.push('Email Spoofing');
+  if (findings.some(f => /Social Engineering/i.test(f.title))) parts.push('Social Engineering');
+  if (findings.some(f => /Command Injection/i.test(f.title))) parts.push('Command Injection');
+  return parts.length ? parts.join(' & ') : 'No active threat vector';
+}
 
-[FILE_TOO_LARGE]: The combined read_files output exceeded the 100,000 character hard limit. This file was truncated after 45,922 characters. Read it separately or use code_search for the relevant section.
+function deriveClassification(findings, mitre) {
+  const parts = [];
+  if (findings.some(f => /SQL Injection/i.test(f.title))) parts.push('OWASP A03:2021 / CWE-89');
+  if (findings.some(f => /Hardcoded.*Key/i.test(f.title))) parts.push('CWE-798');
+  if (findings.some(f => /Privilege/i.test(f.title))) parts.push('OWASP A07:2021');
+  if (findings.some(f => /Brute-Force/i.test(f.title))) parts.push('MITRE T1110');
+  if (findings.some(f => /SPF|DKIM|DMARC/i.test(f.title))) parts.push('Phishing / Domain Spoof');
+  if (findings.some(f => /Command Injection/i.test(f.title))) parts.push('CWE-78');
+  if (parts.length === 0 && mitre.size > 0) parts.push('MITRE ' + [...mitre].join(', '));
+  return parts.length ? parts.join('; ') : 'General Security Finding';
+}
+
+// ── Remediation Generators ──
+function generateCodeRemediation(findings) {
+  const steps = [];
+  if (findings.some(f => /SQL Injection/i.test(f.title))) steps.push('Use parameterized queries (PreparedStatement) instead of string concatenation.');
+  if (findings.some(f => /Hardcoded.*Key/i.test(f.title))) steps.push('Revoke exposed credentials immediately. Migrate to environment variables or a secrets vault (AWS Secrets Manager, HashiCorp Vault).');
+  if (findings.some(f => /Command Injection/i.test(f.title))) steps.push('Use subprocess.run with list arguments instead of shell=True.');
+  if (findings.some(f => /eval/i.test(f.title))) steps.push('Remove eval()/exec() calls. Use safe alternatives like ast.literal_eval() or JSON.parse().');
+  if (findings.some(f => /Hardcoded Password/i.test(f.title))) steps.push('Move all passwords to environment variables or a secrets manager.');
+  steps.push('Add input validation and length limits on all user-supplied parameters.');
+  steps.push('Deploy a Web Application Firewall (WAF) with SQL injection rules enabled.');
+  return steps;
+}
+
+function generateSecureCode(findings) {
+  if (findings.some(f => /SQL Injection/i.test(f.title) || /Hardcoded.*Key/i.test(f.title))) {
+    return \`import os
+import psycopg2
+from flask import Flask, request
+from functools import wraps
+
+app = Flask(__name__)
+
+# Load secrets from environment — NEVER hardcode
+def get_aws_config():
+    return {
+        "access_key": os.environ["AWS_ACCESS_KEY_ID"],
+        "secret_key": os.environ["AWS_SECRET_ACCESS_KEY"],
+    }
+
+def rate_limit(max_attempts=5):
+    """Simple rate limiter decorator"""
+    attempts = {}
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            ip = request.remote_addr
+            attempts.setdefault(ip, [])
+            import time
+            now = time.time()
+            attempts[ip] = [t for t in attempts[ip] if now - t < 60]
+            if len(attempts[ip]) >= max_attempts:
+                return "Rate limit exceeded", 429
+            attempts[ip].append(now)
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+@app.route("/login", methods=["POST"])
+@rate_limit(max_attempts=10)
+def login():
+    username = request.form.get("username", "")
+    password = request.form.get("password", "")
+
+    # Input validation
+    if not username or not password:
+        return "Missing credentials", 400
+    if len(username) > 128 or len(password) > 128:
+        return "Input too long", 400
+
+    conn = psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASS"),
+    )
+    cursor = conn.cursor()
+
+    # Parameterized query — prevents SQL injection
+    cursor.execute(
+        "SELECT * FROM users WHERE username = %s AND password = %s",
+        (username, password)
+    )
+
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if user:
+        return "Login successful"
+    else:
+        return "Invalid credentials"\`;
+  }
+  return '# No code fixes required for this scan type.';
+}
+
+function generatePatchedCode(input, findings) {
+  return generateSecureCode(findings);
+}
+
+function generateEmailRemediation(findings) {
+  const steps = [];
+  if (findings.some(f => /SPF/i.test(f.title))) steps.push('Configure SPF DNS TXT record: v=spf1 include:_spf.google.com ip4:YOUR_IP -all');
+  if (findings.some(f => /DKIM/i.test(f.title))) steps.push('Set up DKIM signing with 2048-bit RSA key. Publish public key as DNS TXT record.');
+  if (findings.some(f => /DMARC/i.test(f.title))) steps.push('Deploy DMARC policy: v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com; pct=100;');
+  if (findings.some(f => /Domain Mismatch/i.test(f.title))) steps.push('Verify sender domains match Return-Path and Reply-To. Block lookalike domains.');
+  if (findings.some(f => /Social Engineering/i.test(f.title))) steps.push('Train users to identify urgency/scarcity language in phishing emails.');
+  steps.push('Implement email authentication for your domain (SPF + DKIM + DMARC).');
+  steps.push('Deploy an anti-phishing gateway with URL sandboxing.');
+  return steps;
+}
+
+function generateEmailRemediationCode() {
+  return \`# DNS TXT Records for Email Authentication
+# Add these to your domain's DNS zone file
+
+# 1. SPF Record (TXT)
+v=spf1 include:_spf.google.com ip4:203.0.113.0/24 -all
+
+# 2. DMARC Record (TXT at _dmarc.domain.com)
+v=DMARC1; p=reject; rua=mailto:dmarc-reports@yourdomain.com; ruf=mailto:dmarc-forensics@yourdomain.com; fo=1; adkim=s; aspf=s; pct=100;
+
+# 3. DKIM Record (TXT at selector._domainkey.domain.com)
+v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...YOUR_PUBLIC_KEY...
+
+# 4. MTA-STS (TXT at _mta-sts.domain.com)
+v=STSv1; id=20260820T000000;
+
+# 5. TLSRPT (TXT at _smtp._tls.domain.com)
+v=TLSRPTv1; rua=mailto:tls-reports@yourdomain.com;\`;
+}
+
+function generateLogRemediation(findings) {
+  const steps = [];
+  if (findings.some(f => /Brute-Force/i.test(f.title))) {
+    steps.push('Install and configure fail2ban to automatically ban IPs after repeated failures.');
+    steps.push('Set up rate limiting on SSH: MaxAuthTries 3 in /etc/ssh/sshd_config.');
+    steps.push('Disable password authentication; use SSH key-based auth only.');
+    steps.push('Block attacker IPs at the firewall level (iptables/ufw).');
+  }
+  if (findings.some(f => /Privilege/i.test(f.title))) {
+    steps.push('Remove www-data from sudo access. Audit /etc/sudoers for unauthorized entries.');
+    steps.push('Implement least-privilege principle for all service accounts.');
+  }
+  steps.push('Enable centralized log aggregation (ELK, Splunk, or CloudWatch).');
+  steps.push('Set up real-time alerting for brute-force and privilege escalation events.');
+  return steps;
+}
+
+function generateLogRemediationCode(findings, iocs) {
+  const ips = iocs.filter(i => /^\d+\.\d+\.\d+\.\d+$/.test(i));
+  const fail2banConfig = \`# /etc/fail2ban/jail.local
+[DEFAULT]
+bantime  = 3600
+findtime = 600
+maxretry = 3
+banaction = iptables-multiport
+
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+maxretry = 3
+bantime  = 86400
+
+[sshd-aggressive]
+enabled  = true
+port     = ssh
+logpath  = /var/log/auth.log
+maxretry = 2
+bantime  = 604800
+filter   = sshd[mode=aggressive]\`;
+
+  const sshdConfig = \`# /etc/ssh/sshd_config - Hardened Configuration
+Port 2222
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+AllowUsers deploy admin
+Protocol 2
+X11Forwarding no
+AllowTcpForwarding no\`;
+
+  const iptablesRules = ips.length > 0
+    ? '#!/bin/bash\\n# Block attacker IPs\\n' + ips.map(ip => 'iptables -A INPUT -s ' + ip + ' -j DROP\\nufw deny from ' + ip).join('\\n')
+    : '#!/bin/bash\\n# Add IPs to block:\\n# iptables -A INPUT -s <ATTACKER_IP> -j DROP';
+
+  return fail2banConfig + '\\n\\n' + sshdConfig + '\\n\\n' + iptablesRules;
+}
+
+// ── SOAR Playbook Generator ──
+function generateSOAR(findings, iocs) {
+  const ips = iocs.filter(i => /^\d+\.\d+\.\d+\.\d+$/.test(i));
+  const firewall = ips.length > 0
+    ? ips.map(ip => '#!/bin/bash\\n# Rate-limit & block ' + ip + '\\niptables -A INPUT -s ' + ip + ' -m recent --set --name SSH\\niptables -A INPUT -s ' + ip + ' -m recent --update --seconds 60 --hitcount 4 --name SSH -j DROP\\niptables -A INPUT -s ' + ip + ' -j DROP\\nufw deny from ' + ip + ' comment "AegisSOC auto-block"')
+    : '# No attacker IPs detected for firewall blocking.';
+
+  const fail2ban = \`[DEFAULT]
+bantime  = 3600
+findtime = 600
+maxretry = 3
+
+[sshd]
+enabled  = true
+port     = ssh
+logpath  = /var/log/auth.log
+maxretry = 3
+bantime  = 86400
+
+[sshd-aggressive]
+enabled  = true
+port     = ssh
+logpath  = /var/log/auth.log
+maxretry = 2
+bantime  = 604800\`;
+
+  const sigma = \`title: Potential Brute Force Attack Detected
+id: aegis-t1110-bruteforce
+status: experimental
+description: Detects multiple failed authentication attempts indicative of brute force
+references:
+  - https://attack.mitre.org/techniques/T1110/
+author: AegisSOC Enterprise
+date: 2026/08/20
+tags:
+  - attack.credential_access
+  - attack.t1110
+logsource:
+  product: linux
+  service: sshd
+detection:
+  selection:
+    EventID: 5
+    EventName: Failed login
+  condition: selection | count() > 5 within 5m
+  level: high
+falsepositives:
+  - Legitimate password changes
+  - Automated system health checks\`;
+
+  const suricata = \`# Suricata IDS Rule for SSH Brute Force
+alert ssh \$EXTERNAL_NET any -> \$HOME_NET 22 (
+  msg:"AegisSOC - SSH Brute Force Attempt Detected";
+  flow:to_server,established;
+  detection_filter:track by_src, count 5, seconds 60;
+  classtype:attempted-admin;
+  sid:1000001; rev:1;
+  metadata:severity high, mitre_attack T1110;
+)
+${ips.length > 0 ? '\\n# Targeted IOC Alerts\\n' + ips.map(ip => 'alert ip ' + ip + ' any -> any any (msg:"AegisSOC - Blocked IP ' + ip + '"; sid:1000100; rev:1;)').join('\\n') : ''}\`;
+
+  return { firewall, fail2ban, sigma, suricata };
+}
+
+// ── MITRE ATT&CK Techniques DB ──
+const MITRE_TECHNIQUES = {
+  T1566: { name: 'Phishing', tactic: 'Initial Access', desc: 'Adversaries send phishing messages to gain access to victim systems.', subTechs: ['T1566.001 Spearphishing Attachment', 'T1566.002 Spearphishing Link', 'T1566.003 Spearphishing via Service'], detection: 'Monitor email gateway logs for SPF/DKIM/DMARC failures. Inspect attachments and URLs.' },
+  T1190: { name: 'Exploit Public-Facing App', tactic: 'Initial Access', desc: 'Adversaries exploit vulnerabilities in internet-facing applications.', subTechs: ['SQL Injection', 'Command Injection', 'Path Traversal'], detection: 'Deploy WAF, monitor application logs for injection patterns, track error spikes.' },
+  T1078: { name: 'Valid Accounts', tactic: 'Initial Access', desc: 'Adversaries use compromised credentials for initial access.', subTechs: ['T1078.001 Default Accounts', 'T1078.002 Domain Accounts', 'T1078.004 Cloud Accounts'], detection: 'Monitor for login anomalies, impossible travel, unusual source IPs.' },
+  T1059: { name: 'Command and Scripting Interpreter', tactic: 'Execution', desc: 'Adversaries abuse command interpreters and scripting engines.', subTechs: ['T1059.001 PowerShell', 'T1059.003 Windows Command Shell', 'T1059.004 Unix Shell', 'T1059.006 Python'], detection: 'Monitor process creation, script execution logs, command-line arguments.' },
+  T1053: { name: 'Scheduled Task/Job', tactic: 'Execution', desc: 'Adversaries abuse scheduling mechanisms for code execution.', subTechs: ['T1053.003 Cron', 'T1053.005 Scheduled Task'], detection: 'Monitor crontab changes, Windows Task Scheduler, and process creation.' },
+  T1548: { name: 'Abuse Elevation Control', tactic: 'Privilege Escalation', desc: 'Adversaries circumvent mechanisms designed to control elevated privileges.', subTechs: ['T1548.001 Setuid and Setgid', 'T1548.003 Sudo and Sudo Caching', 'T1548.004 Elevated Execution with Prompt'], detection: 'Monitor sudo logs, setuid binaries, UAC bypass attempts.' },
+  T1027: { name: 'Obfuscated Files', tactic: 'Defense Evasion', desc: 'Adversaries attempt to make malicious code difficult to analyze.', subTechs: ['T1027.001 Binary Padding', 'T1027.002 Software Packing', 'T1027.005 Indicator Removal'], detection: 'Analyze file entropy, monitor for packing tools, sandbox execution.' },
+  T1110: { name: 'Brute Force', tactic: 'Credential Access', desc: 'Adversaries use brute force techniques to gain access.', subTechs: ['T1110.001 Password Guessing', 'T1110.002 Password Cracking', 'T1110.003 Password Spraying', 'T1110.004 Credential Stuffing'], detection: 'Count failed login attempts per source, monitor for distributed attacks.' },
+  T1552: { name: 'Unsecured Credentials', tactic: 'Credential Access', desc: 'Adversaries search for unsecured credentials in files and memory.', subTechs: ['T1552.001 Credentials In Files', 'T1552.002 Registry Stored Credentials', 'T1552.004 Private Keys'], detection: 'Scan for hardcoded secrets in repos, monitor file access to credential stores.' },
+  T1046: { name: 'Network Service Discovery', tactic: 'Discovery', desc: 'Adversaries scan for services to identify targets.', subTechs: ['T1046.001 Scanning IP Blocks', 'T1046.002 Vulnerability Scanning'], detection: 'Monitor port scan patterns, detect nmap/zmap usage, track new network connections.' },
+  T1569: { name: 'System Services', tactic: 'Execution', desc: 'Adversaries abuse system services for execution.', subTechs: ['T1569.001 Launchctl', 'T1569.002 Service Execution'], detection: 'Monitor service creation, systemctl/service commands, unusual svchost activity.' }
+};
+
+function renderMitreMatrix(techniques) {
+  const container = document.getElementById('mitre-matrix');
+  const section = document.getElementById('mitre-section');
+  if (!techniques || techniques.length === 0) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  const tactics = ['Initial Access', 'Execution', 'Privilege Escalation', 'Credential Access', 'Defense Evasion', 'Discovery'];
+  const tacticIcons = { 'Initial Access': 'door-open', 'Execution': 'play', 'Privilege Escalation': 'arrow-up-right', 'Credential Access': 'key', 'Defense Evasion': 'shield', 'Discovery': 'search' };
+
+  let html = '';
+  tactics.forEach(tactic => {
+    const techs = Object.entries(MITRE_TECHNIQUES).filter(([, v]) => v.tactic === tactic);
+    if (techs.length === 0) return;
+    html += '<div class="space-y-1.5">';
+    html += '<div class="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 mb-2"><i data-lucide="' + (tacticIcons[tactic] || 'crosshair') + '" class="w-3 h-3"></i>' + tactic + '</div>';
+    techs.forEach(([id, tech]) => {
+      const active = techniques.includes(id);
+      html += '<button onclick="showMitreModal(\\'' + id + '\\')" class="mitre-badge block w-full text-left px-2.5 py-2 rounded-lg text-[11px] font-mono transition-all ' +
+        (active
+          ? 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300'
+          : 'bg-slate-800/50 border border-slate-700/30 text-slate-600 hover:bg-slate-800') + '">';
+      html += '<div class="font-semibold">' + id + '</div>';
+      html += '<div class="text-[9px] opacity-70">' + tech.name + '</div>';
+      html += '</button>';
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+  lucide.createIcons();
+}
+
+function showMitreModal(id) {
+  const tech = MITRE_TECHNIQUES[id];
+  if (!tech) return;
+  document.getElementById('mitre-modal-title').textContent = id + ': ' + tech.name;
+  let body = '<p class="text-slate-300">' + tech.desc + '</p>';
+  body += '<div><span class="text-xs font-mono text-cyan-400">Tactic:</span> <span class="text-xs text-slate-400">' + tech.tactic + '</span></div>';
+  body += '<div><span class="text-xs font-mono text-cyan-400">Sub-Techniques:</span></div><ul class="list-disc list-inside text-xs text-slate-400 space-y-1">';
+  tech.subTechs.forEach(s => body += '<li>' + s + '</li>');
+  body += '</ul>';
+  body += '<div><span class="text-xs font-mono text-cyan-400">Detection Guidance:</span></div><p class="text-xs text-slate-400">' + tech.detection + '</p>';
+  document.getElementById('mitre-modal-body').innerHTML = body;
+  document.getElementById('mitre-modal').classList.remove('hidden');
+}
+function closeMitreModal() { document.getElementById('mitre-modal').classList.add('hidden'); }
+
+// ── Render Results ──
+function renderResults(result) {
+  document.getElementById('results-area').classList.remove('hidden');
+  const sevColors = severityColor(result.severity);
+
+  // Threat gauge
+  const arc = 264 * (result.threatScore / 100);
+  const gaugeArc = document.getElementById('gauge-arc');
+  gaugeArc.style.strokeDasharray = arc + ' 264';
+  gaugeArc.style.stroke = sevColors.gauge;
+  animateNumber('gauge-number', result.threatScore);
+
+  // Severity badge
+  const badge = document.getElementById('severity-badge');
+  badge.textContent = result.severity;
+  badge.className = 'px-3 py-1 rounded-full text-xs font-bold font-mono uppercase inline-block ' + sevColors.bg + ' ' + sevColors.text;
+
+  document.getElementById('attack-vector').textContent = result.attackVector;
+
+  // CVSS
+  if (result.cvss) {
+    document.getElementById('cvss-score').textContent = result.cvss.score.toFixed(1);
+    document.getElementById('cvss-vector').textContent = result.cvss.vector;
+    const levelMap = { H: 'High (0.56)', M: 'Med (0.22)', L: 'Low (0.22)', N: 'None (0.0)' };
+    document.getElementById('cvss-c').textContent = levelMap[result.cvss.c] || result.cvss.c;
+    document.getElementById('cvss-i').textContent = levelMap[result.cvss.i] || result.cvss.i;
+    document.getElementById('cvss-a').textContent = levelMap[result.cvss.a] || result.cvss.a;
+    document.getElementById('cvss-c-bar').style.width = ({ H: 100, M: 40, L: 15, N: 0 }[result.cvss.c] || 0) + '%';
+    document.getElementById('cvss-i-bar').style.width = ({ H: 100, M: 40, L: 15, N: 0 }[result.cvss.i] || 0) + '%';
+    document.getElementById('cvss-a-bar').style.width = ({ H: 100, M: 40, L: 15, N: 0 }[result.cvss.a] || 0) + '%';
+    const exploitPct = Math.min(100, Math.round((result.cvss.exploitability / 8.22) * 100));
+    document.getElementById('cvss-e').textContent = result.cvss.exploitability.toFixed(1) + '/8.22';
+    document.getElementById('cvss-e-bar').style.width = exploitPct + '%';
+  }
+
+  // Classification & IOCs
+  const classTags = document.getElementById('classification-tags');
+  classTags.innerHTML = result.classification.split('; ').map(t => '<span class="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-slate-300">' + t + '</span>').join('');
+
+  const iocTags = document.getElementById('ioc-tags');
+  iocTags.innerHTML = result.iocs.map(i => '<span class="px-2 py-0.5 bg-slate-800/80 border border-slate-700/50 rounded text-[10px] font-mono text-cyan-400">' + escHtml(i) + '</span>').join('');
+  document.getElementById('copy-iocs-btn').classList.toggle('hidden', result.iocs.length === 0);
+
+  // MITRE Matrix
+  renderMitreMatrix(result.mitreTechniques);
+
+  // Diff viewer (code scans only)
+  const diffSection = document.getElementById('diff-section');
+  if (result.scanType === 'code' && result.patchedCode) {
+    diffSection.classList.remove('hidden');
+    renderDiff(result.input || document.getElementById('input-editor').value, result.patchedCode);
+  } else {
+    diffSection.classList.add('hidden');
+  }
+
+  // Findings
+  const findingsList = document.getElementById('findings-list');
+  findingsList.innerHTML = result.findings.map(f => {
+    const fc = severityColor(f.severity);
+    return '<div class="bg-slate-800/50 border border-slate-700/30 rounded-lg p-4"><div class="flex items-start gap-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ' + fc.bg + ' ' + fc.text + ' flex-shrink-0">' + f.severity + '</span><div><h4 class="text-sm font-semibold text-white mb-1">' + escHtml(f.title) + '</h4><p class="text-xs text-slate-400">' + escHtml(f.description) + '</p></div></div></div>';
+  }).join('');
+
+  // SOAR
+  if (result.soar) {
+    soarData = result.soar;
+    document.getElementById('soar-section').classList.remove('hidden');
+    switchSoarTab('firewall');
+  } else {
+    document.getElementById('soar-section').classList.add('hidden');
+  }
+
+  // Remediation
+  document.getElementById('remediation-steps').innerHTML = result.remediationSteps.map(s => '<div class="flex items-start gap-2 text-sm text-slate-300"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"></i><span>' + escHtml(s) + '</span></div>').join('');
+  document.getElementById('remediation-code-content').textContent = result.remediationCode;
+
+  lucide.createIcons();
+  setTimeout(() => document.getElementById('results-area').scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+}
+
+function renderDiff(original, patched) {
+  const origLines = original.split('\\n');
+  const patchedLines = patched.split('\\n');
+  document.getElementById('diff-vulnerable').innerHTML = origLines.map(l => '<div class="diff-line-del px-2 py-0.5 text-red-400/80">' + escHtml(l) + '</div>').join('');
+  document.getElementById('diff-patched').innerHTML = patchedLines.map(l => '<div class="diff-line-add px-2 py-0.5 text-emerald-400/80">' + escHtml(l) + '</div>').join('');
+}
+
+function switchSoarTab(tab) {
+  ['firewall','fail2ban','sigma','suricata'].forEach(t => {
+    const btn = document.getElementById('soar-' + t);
+    if (btn) {
+      btn.className = t === tab
+        ? 'soar-tab-active px-3 py-2 text-xs font-mono border-b-2 border-cyan-400 rounded-t transition-colors'
+        : 'px-3 py-2 text-xs font-mono text-slate-500 border-b-2 border-transparent rounded-t transition-colors hover:text-slate-300';
+    }
+  });
+  const content = document.getElementById('soar-content');
+  if (soarData[tab]) content.querySelector('code,pre,button') ? (content.innerHTML = '<button onclick="copySoarContent()" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all font-mono z-10">Copy</button><pre class="whitespace-pre-wrap">' + escHtml(soarData[tab]) + '</pre>') : null;
+  content.innerHTML = '<button onclick="copySoarContent()" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all font-mono z-10">Copy</button><pre class="whitespace-pre-wrap">' + escHtml(soarData[tab] || 'No data') + '</pre>';
+}
+
+function animateNumber(id, target) {
+  const el = document.getElementById(id);
+  let current = 0;
+  const step = Math.ceil(target / 30);
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) { current = target; clearInterval(timer); }
+    el.textContent = current;
+  }, 20);
+}
+
+// ── Copy / Export ──
+function copyIOCs() { navigator.clipboard.writeText(lastResult.iocs.join(', ')); }
+function copySoarContent() { navigator.clipboard.writeText(soarData[currentSoarTab || 'firewall'] || ''); }
+function copyRemediationCode() { navigator.clipboard.writeText(document.getElementById('remediation-code-content').textContent); }
+
+let currentSoarTab = 'firewall';
+
+function exportTxt() {
+  if (!lastResult) return;
+  const r = lastResult;
+  let txt = 'AegisSOC Enterprise — Incident Report\\n';
+  txt += '=' .repeat(50) + '\\n\\n';
+  txt += 'Date: ' + new Date().toISOString() + '\\n';
+  txt += 'Scan Type: ' + r.scanType + '\\n';
+  txt += 'Threat Score: ' + r.threatScore + '/100 (' + r.severity + ')\\n';
+  txt += 'Attack Vector: ' + r.attackVector + '\\n';
+  txt += 'Classification: ' + r.classification + '\\n';
+  if (r.cvss) txt += 'CVSS v3.1: ' + r.cvss.score + ' (' + r.cvss.vector + ')\\n';
+  txt += '\\nFINDINGS\\n' + '-'.repeat(30) + '\\n';
+  r.findings.forEach((f, i) => { txt += (i+1) + '. [' + f.severity.toUpperCase() + '] ' + f.title + '\\n   ' + f.description + '\\n\\n'; });
+  txt += 'IOCs\\n' + '-'.repeat(30) + '\\n' + r.iocs.join(', ') + '\\n\\n';
+  txt += 'REMEDIATION STEPS\\n' + '-'.repeat(30) + '\\n';
+  r.remediationSteps.forEach((s, i) => { txt += (i+1) + '. ' + s + '\\n'; });
+  txt += '\\nREMEDIATION CODE\\n' + '-'.repeat(30) + '\\n' + r.remediationCode + '\\n';
+  downloadFile('aegis-soc-report.txt', txt, 'text/plain');
+}
+
+function exportJson() {
+  if (!lastResult) return;
+  const json = JSON.stringify(lastResult, null, 2);
+  downloadFile('aegis-soc-report.json', json, 'application/json');
+}
+
+function downloadFile(name, content, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function applyPatch() {
+  if (lastResult && lastResult.patchedCode) {
+    document.getElementById('input-editor').value = lastResult.patchedCode;
+    runAnalysis();
+  }
+}
+
+// ── Live Log Streaming ──
+let liveStreamInterval = null;
+function toggleLiveStreaming(enabled) {
+  const bar = document.getElementById('stream-progress');
+  const count = document.getElementById('stream-count');
+  if (enabled) {
+    bar.classList.remove('hidden');
+    count.classList.remove('hidden');
+    let idx = 0;
+    const lines = document.getElementById('input-editor').value.split('\\n');
+    liveStreamInterval = setInterval(() => {
+      if (idx >= lines.length) { clearInterval(liveStreamInterval); return; }
+      idx++;
+      const pct = Math.round((idx / lines.length) * 100);
+      document.getElementById('stream-bar').style.width = pct + '%';
+      count.textContent = idx + '/' + lines.length + ' events';
+      if (idx === lines.length) { runAnalysis(); }
+    }, 200);
+  } else {
+    clearInterval(liveStreamInterval);
+    bar.classList.add('hidden');
+    count.classList.add('hidden');
+  }
+}
+
+// ── Agent / Copilot ──
+function syncAgentContext(result, input) {
+  agentContext = { scanType: result.scanType, result, input };
+  const label = document.getElementById('context-label');
+  if (label) label.textContent = result.scanType.toUpperCase() + ' | ' + result.attackVector + ' | Score: ' + result.threatScore + '/100 [' + result.severity + ']';
+}
+
+function toggleAgentDrawer(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const drawer = document.getElementById('agent-drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  if (drawer.classList.contains('translate-x-full')) {
+    drawer.classList.remove('translate-x-full');
+    drawer.classList.add('translate-x-0');
+    overlay.classList.remove('hidden');
+  } else {
+    closeAgentDrawer();
+  }
+}
+
+function openAgentDrawer() {
+  const drawer = document.getElementById('agent-drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  drawer.classList.remove('translate-x-full');
+  drawer.classList.add('translate-x-0');
+  overlay.classList.remove('hidden');
+}
+
+function closeAgentDrawer(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const drawer = document.getElementById('agent-drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  drawer.classList.add('translate-x-full');
+  drawer.classList.remove('translate-x-0');
+  overlay.classList.add('hidden');
+  drawer.style.display = '';
+  overlay.style.display = '';
+}
+
+function clearChat() {
+  const container = document.getElementById('agent-chat-messages');
+  container.innerHTML = '';
+  appendChat('bot', 'Chat cleared. I still have your scan context loaded. What would you like to know?');
+}
+
+function appendChat(role, text) {
+  const container = document.getElementById('agent-chat-messages');
+  const div = document.createElement('div');
+  div.className = 'flex gap-3 ' + (role === 'user' ? 'justify-end' : '');
+  if (role === 'bot') {
+    div.innerHTML = '<div class="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-500 flex items-center justify-center flex-shrink-0"><i data-lucide="bot" class="w-4 h-4 text-white"></i></div><div class="bg-slate-800 rounded-lg rounded-tl-sm p-3 text-sm text-slate-300 max-w-[85%]">' + formatAgentText(text) + '</div>';
+  } else {
+    div.innerHTML = '<div class="bg-cyan-600/20 border border-cyan-500/20 rounded-lg rounded-tr-sm p-3 text-sm text-slate-200 max-w-[85%]">' + escHtml(text) + '</div>';
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  lucide.createIcons();
+}
+
+function formatAgentText(text) {
+  return text.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, (match, code) => {
+    agentChatCodeCounter++;
+    return '<div class="relative mt-2 mb-1"><div class="bg-soc-950 border border-slate-700 rounded-lg p-3 font-mono text-xs text-slate-300 overflow-x-auto group"><button onclick="copyAgentCode(' + agentChatCodeCounter + ')" class="absolute top-2 right-2 px-2 py-0.5 bg-slate-800 text-slate-400 text-[10px] rounded hover:bg-slate-700 font-mono">Copy</button><pre id="agent-code-' + agentChatCodeCounter + '" class="whitespace-pre-wrap">' + escHtml(code.trim()) + '</pre></div></div>';
+  }).replace(/\\*\\*(.+?)\\*\\*/g, '<strong class="text-white">$1</strong>').replace(/\\n/g, '<br>');
+}
+
+function copyAgentCode(id) {
+  const el = document.getElementById('agent-code-' + id);
+  if (el) navigator.clipboard.writeText(el.textContent);
+}
+
+function sendAgentMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('agent-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendChat('user', msg);
+  setTimeout(() => {
+    const response = generateAgentResponse(msg);
+    appendChat('bot', response);
+  }, 600 + Math.random() * 800);
+}
+
+function agentToolAction(tool) {
+  if (tool === 'stix') {
+    if (!agentContext.result) { appendChat('bot', 'No scan results loaded. Run a scan first, then I\\'ll generate the STIX 2.1 bundle.'); return; }
+    appendChat('user', '[Tool: Generate STIX 2.1 Threat Intel Bundle]');
+    setTimeout(() => { appendChat('bot', generateSTIXBundle()); }, 500);
+  } else if (tool === 'briefing') {
+    if (!agentContext.result) { appendChat('bot', 'No scan results loaded. Run a scan first, then I\\'ll draft the executive briefing.'); return; }
+    appendChat('user', '[Tool: Draft Executive Briefing]');
+    setTimeout(() => { appendChat('bot', generateExecutiveBriefing()); }, 500);
+  } else if (tool === 'decode') {
+    appendChat('user', '[Tool: Reverse-Engineer Shellcode/Payload]');
+    setTimeout(() => { appendChat('bot', 'Paste any Base64, URL-encoded, or hex payload and I\\'ll decode it. Example patterns detected:\\n\\n• AWS Key: AKIA... (already extracted)\\n• IP addresses from logs\\n• Any encoded strings in your input.\\n\\nType a payload to decode, or I can analyze the IOCs from your current scan.'); }, 500);
+  } else if (tool === 'securecode') {
+    if (!agentContext.result) { appendChat('bot', 'No scan results loaded. Run a code scan first.'); return; }
+    appendChat('user', '[Tool: Get Secure Code Fix]');
+    setTimeout(() => { appendChat('bot', 'Here\\'s the production-ready, hardened code for your scan:\\n\\n\`\`\`' + (agentContext.result.remediationCode || '# Run a code scan to generate secure code') + '\`\`\`'); }, 500);
+  }
+}
+
+function generateAgentResponse(msg) {
+  const lower = msg.toLowerCase();
+  const r = agentContext.result;
+
+  if (/^(hi|hello|hey|help|what can|how do|guide)/.test(lower)) {
+    return 'I\\'m **Aegis Copilot**, your Tier-1 SOC analyst. I have full context of your current scan. Ask me about:\\n\\n• **Threat summary** — overview of findings\\n• **IOCs** — extracted indicators of compromise\\n• **Remediation** — how to fix the issues\\n• **MITRE/OWASP** — classification details\\n• **Secure code** — production-ready fixes\\n• **STIX bundle** — threat intel export\\n• **Executive briefing** — CISO report\\n\\nType your question or use the tool buttons above.';
+  }
+
+  if (!r) return 'No scan results loaded yet. Run a scan (or load a demo) and I\\'ll have full context to answer your questions.';
+
+  if (/summary|overview|what.*found|analyze|analysis/.test(lower)) {
+    return '**Threat Summary**\\n\\n• **Attack Vector:** ' + r.attackVector + '\\n• **Threat Score:** ' + r.threatScore + '/100 (' + r.severity + ')' + (r.cvss ? '\\n• **CVSS v3.1:** ' + r.cvss.score + ' (' + r.cvss.vector + ')' : '') + '\\n\\n**Findings (' + r.findings.length + '):**\\n' + r.findings.map(f => '• [' + f.severity + '] ' + f.title).join('\\n') + '\\n\\n**IOCs (' + r.iocs.length + '):** ' + (r.iocs.length ? r.iocs.join(', ') : 'None extracted') + '\\n\\nWould you like me to go deeper on any finding?';
+  }
+
+  if (/ioc|indicator|evidence|ip|domain|extracted/.test(lower)) {
+    if (r.iocs.length === 0) return 'No IOCs were extracted from this scan. Try a scan with network indicators (IPs, domains, URLs).';
+    return '**Extracted IOCs:**\\n\\n' + r.iocs.map(i => '• `' + i + '`').join('\\n') + '\\n\\nThese have been mapped to the STIX 2.1 indicator format. Use the **STIX Bundle** button to export them.';
+  }
+
+  if (/remediat|fix|patch|secure|hardened|improve/.test(lower)) {
+    let resp = '**Remediation Steps:**\\n\\n' + r.remediationSteps.map((s, i) => (i+1) + '. ' + s).join('\\n');
+    if (r.scanType === 'code' && r.remediationCode) resp += '\\n\\n**Secure Code:**\\n\`\`\`' + r.remediationCode + '\`\`\`';
+    resp += '\\n\\nWould you like me to explain any specific fix?';
+    return resp;
+  }
+
+  if (/mitre|owasp|cwe|attack|technique|classification/.test(lower)) {
+    let resp = '**Classification:** ' + r.classification + '\\n\\n**MITRE ATT&CK Techniques:**\\n';
+    if (r.mitreTechniques.length) {
+      r.mitreTechniques.forEach(id => {
+        const tech = MITRE_TECHNIQUES[id];
+        if (tech) resp += '\\n• **' + id + ' — ' + tech.name + '** (' + tech.tactic + ')\\n  ' + tech.desc + '\\n  Detection: ' + tech.detection;
+      });
+    } else resp += 'No specific techniques mapped.';
+    return resp;
+  }
+
+  if (/score|severity|threat|risk|cvss/.test(lower)) {
+    let resp = '**Threat Assessment:**\\n\\n• Score: **' + r.threatScore + '/100** (' + r.severity + ')';
+    if (r.cvss) resp += '\\n• CVSS v3.1: **' + r.cvss.score + '/10**\\n• Vector: `' + r.cvss.vector + '`\\n• Exploitability: ' + r.cvss.exploitability + '/8.22\\n• Impact: ' + r.cvss.impact;
+    resp += '\\n\\n' + (r.severity === 'CRITICAL' ? '⚠️ This is a **critical** severity finding. Immediate containment recommended.' : r.severity === 'MEDIUM' ? '⚡ Moderate severity. Schedule remediation within the current sprint.' : '✅ Low severity. Address during regular maintenance.');
+    return resp;
+  }
+
+  if (/finding|detail|specific|explain|deep.?(?:dive|dive)/.test(lower)) {
+    if (r.findings.length === 0) return 'No findings to detail.';
+    return '**Detailed Findings:**\\n\\n' + r.findings.map(f => '**' + f.title + '** [' + f.severity + ']\\n' + f.description).join('\\n\\n');
+  }
+
+  if (/stix|threat.intel|indicator/.test(lower)) return generateSTIXBundle();
+  if (/executive|ciso|brief|report|summary.report/.test(lower)) return generateExecutiveBriefing();
+  if (/email.spoof|spf|dkim|dmarc|dns|domain.auth/.test(lower)) return generateEmailSecurityResponse();
+
+  return 'I\\'m not sure how to answer that. Try asking about:\\n\\n• **Threat summary** or **findings**\\n• **IOCs** or **indicators**\\n• **Remediation** or **secure code**\\n• **MITRE/OWASP** classification\\n• **CVSS score** details\\n• **STIX bundle** export\\n• **Executive briefing**\\n• **Email security** (SPF/DKIM/DMARC)';
+}
+
+function generateSTIXBundle() {
+  const r = agentContext.result;
+  if (!r) return 'No scan context available.';
+  const bundle = {
+    type: 'bundle',
+    id: 'bundle--aegis-' + Date.now(),
+    spec_version: '2.1',
+    created: new Date().toISOString(),
+    objects: [
+      {
+        type: 'report',
+        spec_version: '2.1',
+        id: 'report--aegis-' + Date.now(),
+        created: new Date().toISOString(),
+        name: 'AegisSOC Incident Report - ' + r.attackVector,
+        description: r.classification,
+        published: new Date().toISOString(),
+        object_refs: r.iocs.map((_, i) => 'indicator--aegis-' + i)
+      },
+      ...r.iocs.map((ioc, i) => ({
+        type: 'indicator',
+        spec_version: '2.1',
+        id: 'indicator--aegis-' + i,
+        created: new Date().toISOString(),
+        name: 'IOC: ' + ioc,
+        pattern: /^\d+\.\d+\.\d+\.\d+$/.test(ioc)
+          ? '[ipv4-addr:value = \\'' + ioc + '\\']'
+          : '[domain-name:value = \\'' + ioc + '\\']',
+        pattern_type: 'stix',
+        valid_from: new Date().toISOString(),
+        labels: ['malicious-activity']
+      }))
+    ]
+  };
+  return '**STIX 2.1 Threat Intelligence Bundle:**\\n\\n\`\`\`' + JSON.stringify(bundle, null, 2) + '\`\`\`\\n\\n' + r.iocs.length + ' indicators mapped. Copy the JSON and import into your threat intelligence platform (MISP, OpenCTI, etc.).';
+}
+
+function generateExecutiveBriefing() {
+  const r = agentContext.result;
+  if (!r) return 'No scan context available.';
+  return '**Executive Security Briefing**\\n\\n' +
+    '**To:** Chief Information Security Officer\\n' +
+    '**From:** AegisSOC Enterprise Automated Triage\\n' +
+    '**Date:** ' + new Date().toLocaleDateString() + '\\n' +
+    '**Subject:** Security Incident Assessment — ' + r.attackVector + '\\n\\n' +
+    '**Severity Level:** ' + r.severity + ' (Score: ' + r.threatScore + '/100)' + (r.cvss ? '\\n**CVSS v3.1:** ' + r.cvss.score + '/10' : '') + '\\n\\n' +
+    '**Executive Summary:**\\nThe automated security triage system identified ' + r.findings.length + ' security finding(s) of severity ' + r.severity + '. ' +
+    'The primary attack vector is: ' + r.attackVector + '.\\n\\n' +
+    '**Key Findings:**\\n' + r.findings.map(f => '• [' + f.severity + '] ' + f.title + ' — ' + f.description).join('\\n') + '\\n\\n' +
+    '**Indicators of Compromise:** ' + (r.iocs.length ? r.iocs.join(', ') : 'None extracted') + '\\n\\n' +
+    '**Immediate Containment Actions:**\\n' + r.remediationSteps.slice(0, 3).map((s, i) => (i+1) + '. ' + s).join('\\n') + '\\n\\n' +
+    '**Recommended Timeline:**\\n• Containment: Immediate\\n• Remediation: ' + (r.severity === 'CRITICAL' ? 'Within 24 hours' : 'Within current sprint') + '\\n• Post-incident review: Within 1 week\\n\\n' +
+    '**Report generated by AegisSOC Enterprise v2.0**';
+}
+
+function generateEmailSecurityResponse() {
+  return '**Email Authentication & Anti-Spoofing Configuration:**\\n\\n' +
+    '**1. SPF (Sender Policy Framework):**\\n\`\`\`\\n# DNS TXT record for your domain\\nv=spf1 include:_spf.google.com ip4:203.0.113.0/24 -all\\n\`\`\`\\n' +
+    '**2. DKIM (DomainKeys Identified Mail):**\\n\`\`\`\\n# Generate 2048-bit RSA key pair\\nopenssl genrsa -out dkim-private.pem 2048\\nopenssl rsa -in dkim-private.pem -pubout -out dkim-public.pem\\n\\n# DNS TXT record (selector._domainkey.domain.com)\\nv=DKIM1; k=rsa; p=MIIBIjANBgkqhki...YOUR_PUB_KEY...\\n\`\`\`\\n' +
+    '**3. DMARC (strict reject policy):**\\n\`\`\`\\n# DNS TXT record (_dmarc.domain.com)\\nv=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com; ruf=mailto:forensics@yourdomain.com; fo=1; adkim=s; aspf=s; pct=100;\\n\`\`\`\\n' +
+    '**4. MTA-STS + TLSRPT:**\\n\`\`\`\\n# MTA-STS (_mta-sts.domain.com)\\nv=STSv1; id=20260820T000000;\\n\\n# TLSRPT (_smtp._tls.domain.com)\\nv=TLSRPTv1; rua=mailto:tls@yourdomain.com;\\n\`\`\`\\n' +
+    '⚠️ Always test with a staging domain before enforcing reject policy.';
+}
+
+// ── Utilities ──
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  // Attach close button handlers
+  const closeBtn = document.getElementById('force-close-agent-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeAgentDrawer, true);
+  const overlay = document.getElementById('drawer-overlay');
+  if (overlay) overlay.addEventListener('click', closeAgentDrawer, true);
+});
+<\/script>
+</body>
+</html>`;
+
+fs.writeFileSync('/project/index.html', html);
+console.log('Written ' + html.length + ' bytes');
+console.log('Lines: ' + html.split('\\n').length);

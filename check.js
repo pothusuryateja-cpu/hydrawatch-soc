@@ -1,1 +1,7 @@
-[FILE_TOO_LARGE]: The combined read_files output exceeded the 100,000 character hard limit. This file was truncated after 0 characters. Read it separately or use code_search for the relevant section.
+const fs = require('fs');
+// Read what we have so far
+let html = fs.readFileSync('/project/index.html', 'utf8');
+// Find the last script tag and check line count
+const lines = html.split('\n');
+console.log('Current lines:', lines.length);
+console.log('Last line:', lines[lines.length-1].substring(0,80));

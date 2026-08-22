@@ -1,1 +1,182 @@
-[FILE_TOO_LARGE]: The combined read_files output exceeded the 100,000 character hard limit. This file was truncated after 0 characters. Read it separately or use code_search for the relevant section.
+// ── MITRE ATT&CK Data ──
+var MITRE_TECHNIQUES = {
+  'T1566': { name: 'Phishing', tactic: 'Initial Access', desc: 'Adversaries send phishing messages to gain access.', subs: ['T1566.001 Spearphishing Attachment', 'T1566.002 Spearphishing Link'], detect: 'Monitor email gateway logs, inspect URL reputation.' },
+  'T1190': { name: 'Exploit Public-Facing App', tactic: 'Initial Access', desc: 'Adversaries exploit vulnerabilities in internet-facing apps.', subs: ['CVE scanning', 'WAF bypass'], detect: 'Deploy WAF, monitor application logs.' },
+  'T1078': { name: 'Valid Accounts', tactic: 'Initial Access', desc: 'Adversaries use stolen credentials.', subs: ['T1078.001 Default Accounts'], detect: 'Monitor impossible travel, enforce MFA.' },
+  'T1059': { name: 'Command & Scripting Interpreter', tactic: 'Execution', desc: 'Adversaries execute commands or scripts.', subs: ['T1059.006 Python'], detect: 'Monitor process creation, EDR telemetry.' },
+  'T1053': { name: 'Scheduled Task/Job', tactic: 'Execution', desc: 'Adversaries abuse task schedulers.', subs: ['T1053.003 Cron'], detect: 'Audit scheduled tasks.' },
+  'T1548': { name: 'Abuse Elevation Control', tactic: 'Privilege Escalation', desc: 'Adversaries circumvent UAC or abuse sudo.', subs: ['T1548.003 Sudo Caching'], detect: 'Monitor sudo logs.' },
+  'T1027': { name: 'Obfuscated Files', tactic: 'Defense Evasion', desc: 'Adversaries hide malicious artifacts.', subs: ['T1027.001 Binary Padding'], detect: 'Static analysis, entropy scanning.' },
+  'T1110': { name: 'Brute Force', tactic: 'Credential Access', desc: 'Adversaries use brute-force techniques.', subs: ['T1110.001 Password Guessing'], detect: 'Monitor auth failures, deploy fail2ban.' },
+  'T1552': { name: 'Unsecured Credentials', tactic: 'Credential Access', desc: 'Adversaries search for insecure credentials.', subs: ['T1552.001 Credentials In Files'], detect: 'Scan repos for secrets.' },
+  'T1046': { name: 'Network Service Scan', tactic: 'Discovery', desc: 'Adversaries scan for open ports.', subs: ['Port scanning'], detect: 'IDS alerts for port scans.' },
+  'T1569': { name: 'System Services', tactic: 'Execution', desc: 'Adversaries abuse system services.', subs: ['T1569.002 Service Execution'], detect: 'Monitor service creation.' }
+};
+
+function renderMitreMatrix(activeTechniques) {
+  var matrix = document.getElementById('mitre-matrix');
+  matrix.innerHTML = '';
+  var tactics = {};
+  Object.keys(MITRE_TECHNIQUES).forEach(function(id) {
+    var t = MITRE_TECHNIQUES[id];
+    if (!tactics[t.tactic]) tactics[t.tactic] = [];
+    tactics[t.tactic].push({ id: id, name: t.name, desc: t.desc });
+  });
+  Object.keys(tactics).forEach(function(tactic) {
+    var col = document.createElement('div');
+    col.className = 'space-y-1.5';
+    col.innerHTML = '<div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">' + tactic + '</div>';
+    tactics[tactic].forEach(function(t) {
+      var isActive = activeTechniques.indexOf(t.id) !== -1;
+      var badge = document.createElement('div');
+      badge.className = 'mitre-cell p-2 rounded-lg border text-xs cursor-pointer transition-all ' + (isActive ? 'active border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-700 bg-slate-800/50 text-slate-500 hover:border-slate-600');
+      badge.innerHTML = '<div class="font-mono font-bold text-[11px]">' + t.id + '</div><div class="text-[10px] mt-0.5">' + t.name + '</div>';
+      badge.onclick = function() { showMitreModal(t.id); };
+      col.appendChild(badge);
+    });
+    matrix.appendChild(col);
+  });
+}
+
+function showMitreModal(techId) {
+  var t = MITRE_TECHNIQUES[techId];
+  if (!t) return;
+  document.getElementById('mitre-modal-title').textContent = techId + ' - ' + t.name;
+  document.getElementById('mitre-modal-body').innerHTML =
+    '<div><span class="text-slate-500 font-mono text-xs">TACTIC:</span> <span class="text-cyan-400">' + t.tactic + '</span></div>' +
+    '<p>' + t.desc + '</p>' +
+    '<div><span class="text-slate-500 font-mono text-xs">SUB-TECHNIQUES:</span></div>' +
+    '<ul class="list-disc list-inside text-slate-400 text-xs">' + t.subs.map(function(s){return '<li>'+s+'</li>'}).join('') + '</ul>' +
+    '<div><span class="text-slate-500 font-mono text-xs">DETECTION:</span></div>' +
+    '<p class="text-xs text-slate-400 bg-slate-900 p-2 rounded-lg">' + t.detect + '</p>';
+  document.getElementById('mitre-modal').classList.remove('hidden');
+}
+function closeMitreModal(e) { if (e.target === document.getElementById('mitre-modal') || e.target.closest('button')) document.getElementById('mitre-modal').classList.add('hidden'); }
+
+// ── Render Results ──
+function renderResults(result) {
+  var total = result.findings.reduce(function(s, f) { return s + (f.severity === 'Critical' ? 25 : f.severity === 'High' ? 15 : f.severity === 'Medium' ? 8 : 3); }, 0);
+  var score = Math.min(total, 100);
+  var severity = score >= 70 ? 'CRITICAL' : score >= 40 ? 'MEDIUM' : 'LOW';
+  var sevColor = severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : severity === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+  var arcColor = severity === 'CRITICAL' ? '#ef4444' : severity === 'MEDIUM' ? '#f59e0b' : '#06b6d4';
+
+  document.getElementById('threat-score').textContent = score;
+  document.getElementById('threat-arc').setAttribute('stroke-dasharray', (score * 3.14) + ' 314');
+  document.getElementById('threat-arc').setAttribute('stroke', arcColor);
+  var sevBadge = document.getElementById('severity-badge');
+  sevBadge.textContent = severity;
+  sevBadge.className = 'mt-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ' + sevColor;
+
+  var cvss = calculateCVSS(result.findings);
+  document.getElementById('cvss-score').textContent = cvss.score.toFixed(1);
+  document.getElementById('cvss-score').style.color = cvss.score >= 7 ? '#ef4444' : cvss.score >= 4 ? '#f59e0b' : '#22c55e';
+  document.getElementById('cvss-vector').textContent = cvss.vector;
+  var impactMap = { N: 0, L: 33, H: 100 };
+  document.getElementById('cvss-c').style.width = impactMap[cvss.impacts.C] + '%';
+  document.getElementById('cvss-c-val').textContent = cvss.impacts.C === 'N' ? 'None' : cvss.impacts.C === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-i').style.width = impactMap[cvss.impacts.I] + '%';
+  document.getElementById('cvss-i-val').textContent = cvss.impacts.I === 'N' ? 'None' : cvss.impacts.I === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-a').style.width = impactMap[cvss.impacts.A] + '%';
+  document.getElementById('cvss-a-val').textContent = cvss.impacts.A === 'N' ? 'None' : cvss.impacts.A === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-e').style.width = (parseFloat(cvss.exploitability) / 8.22 * 100) + '%';
+  document.getElementById('cvss-e-val').textContent = cvss.exploitability;
+
+  var tagsHtml = result.classification.split(/;\s*/).map(function(c) { return '<span class="px-2 py-1 rounded-lg bg-slate-700/80 text-[11px] font-mono text-slate-300 border border-slate-600">' + c.trim() + '</span>'; }).join('');
+  document.getElementById('classification-tags').innerHTML = tagsHtml;
+  document.getElementById('attack-vector').textContent = result.attackVector;
+
+  var iocHtml = result.iocs.map(function(i) { return '<span class="px-2 py-0.5 rounded bg-slate-950/80 text-[11px] font-mono text-cyan-400 border border-slate-700">' + i + '</span>'; }).join('');
+  document.getElementById('ioc-tags').innerHTML = iocHtml || '<span class="text-xs text-slate-600">No IOCs extracted</span>';
+
+  renderMitreMatrix(result.techniques);
+
+  if (result.diff) {
+    document.getElementById('diff-section').classList.remove('hidden');
+    document.getElementById('diff-old').textContent = result.diff.old;
+    document.getElementById('diff-new').textContent = result.diff.new;
+  } else { document.getElementById('diff-section').classList.add('hidden'); }
+
+  document.getElementById('findings-list').innerHTML = result.findings.map(function(f) {
+    var fc = f.severity === 'Critical' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : f.severity === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : f.severity === 'Medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    return '<div class="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 fade-in"><div class="flex items-center justify-between mb-1"><span class="font-semibold text-sm text-white">' + f.title + '</span><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border ' + fc + '">' + f.severity + '</span></div><p class="text-xs text-slate-400">' + f.description + '</p></div>';
+  }).join('');
+
+  document.getElementById('remediation-steps').innerHTML = '<ul class="space-y-1">' + result.findings.map(function(f) {
+    return '<li class="text-sm text-slate-300 flex items-start gap-2"><span class="text-cyan-400 mt-0.5">&gt;</span> Address: ' + f.title + '</li>';
+  }).join('') + '</ul>';
+
+  if (result.remediationCode) {
+    document.getElementById('remediation-code').classList.remove('hidden');
+    document.getElementById('rem-code-content').textContent = result.remediationCode;
+  }
+
+  if (result.soar) {
+    document.getElementById('soar-content').innerHTML =
+      '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Linux Firewall Rules</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + result.soar.firewall + '</pre></div>' +
+      '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Fail2Ban Configuration</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + result.soar.fail2ban + '</pre></div>';
+  }
+
+  var sigma = genSigma(result.findings, result.techniques, result.iocs);
+  var suricata = genSuricata(result.findings, result.iocs);
+  document.getElementById('sigma-content').innerHTML =
+    '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Sigma Detection Rule</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + sigma + '</pre></div>' +
+    '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Suricata / Snort Rule</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + suricata + '</pre></div>';
+
+  switchRemTab('remediation');
+}
+
+function switchRemTab(tab) {
+  ['remediation','soar','sigma'].forEach(function(t) {
+    document.getElementById('rem-content-' + t).classList.toggle('hidden', t !== tab);
+    var btn = document.getElementById('remtab-' + t);
+    if (t === tab) { btn.className = 'px-4 py-3 text-xs font-medium text-cyan-400 border-b-2 border-cyan-400 transition'; }
+    else { btn.className = 'px-4 py-3 text-xs font-medium text-slate-500 hover:text-slate-300 transition'; }
+  });
+}
+
+function genSigma(f,t,i) {
+  var title = f[0] ? f[0].title : 'Security Event';
+  return 'title: ' + title + '\nstatus: experimental\nauthor: AegisSOC\ndate: ' + new Date().toISOString().split('T')[0] + '\ntags:\n' + t.map(function(x){return '  - '+x}).join('\n') + '\nlogsource:\n  category: authentication\n  product: linux\ndetection:\n  selection:\n    EventID: '+(t.indexOf('T1110')!==-1?'4625':'syslog')+'\n  condition: selection\nlevel: '+(f.some(function(x){return x.severity==='Critical'})?'critical':'high');
+}
+function genSuricata(f,i) { return i.filter(function(x){return /^\d{1,3}(\.\d{1,3}){3}$/.test(x)}).map(function(ip){return 'alert tcp '+ip+' any -> $HOME_NET 22 (msg:"AegisSOC - SSH Brute Force from '+ip+'"; threshold:type both,track by_src,count 5,seconds 60; sid:1000001; rev:1;)'}).join('\n')||'No network IOCs'; }
+
+// ── Copy / Export ──
+function copyIOCs() { if (!lastResult) return; navigator.clipboard.writeText(lastResult.iocs.join(', ')); }
+function copyRemCode() { navigator.clipboard.writeText(document.getElementById('rem-code-content').textContent); }
+function applyPatch() { if (lastResult && lastResult.diff) { document.getElementById('input-editor').value = DEMOS.code + '\n\n# PATCHED VERSION\n' + lastResult.diff.new; } }
+
+function exportTxt() {
+  if (!lastResult) return;
+  var r = lastResult;
+  var txt = 'AEGISSOC ENTERPRISE - INCIDENT REPORT\n' + '='.repeat(50) + '\nDate: ' + new Date().toISOString() + '\nScan Type: ' + r.scanType.toUpperCase() + '\nAttack Vector: ' + r.attackVector + '\nClassification: ' + r.classification + '\n\nTHREAT SCORE: ' + document.getElementById('threat-score').textContent + '/100 (' + document.getElementById('severity-badge').textContent + ')\nCVSS v3.1: ' + document.getElementById('cvss-score').textContent + '\n\nFINDINGS:\n' + r.findings.map(function(f,i){return (i+1)+'. ['+f.severity.toUpperCase()+'] '+f.title+'\n   '+f.description}).join('\n\n') + '\n\nIOCs:\n' + r.iocs.map(function(i){return '  * '+i}).join('\n') + '\n\nREMEDIATION:\n' + (r.remediationCode || 'N/A');
+  download(txt, 'aegis-incident-report.txt', 'text/plain');
+}
+function exportJson() {
+  if (!lastResult) return;
+  var r = lastResult;
+  var json = JSON.stringify({ timestamp: new Date().toISOString(), scanType: r.scanType, threatScore: parseInt(document.getElementById('threat-score').textContent), severity: document.getElementById('severity-badge').textContent, cvss: { score: document.getElementById('cvss-score').textContent, vector: document.getElementById('cvss-vector').textContent }, attackVector: r.attackVector, classification: r.classification, mitreTechniques: r.techniques, iocs: r.iocs, findings: r.findings }, null, 2);
+  download(json, 'aegis-full-report.json', 'application/json');
+}
+function download(content, filename, type) { var blob = new Blob([content], { type: type }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href); }
+
+// ── Live Stream ──
+function toggleLiveStream() {
+  var on = document.getElementById('live-stream-toggle').checked;
+  document.getElementById('stream-progress').classList.toggle('hidden', !on);
+  if (on) {
+    var lines = DEMOS.logs.split('\n');
+    var idx = 0;
+    document.getElementById('stream-bar').style.width = '0%';
+    document.getElementById('stream-count').textContent = '0 / ' + lines.length + ' events';
+    document.getElementById('input-editor').value = '';
+    liveStreamInterval = setInterval(function() {
+      if (idx >= lines.length) { clearInterval(liveStreamInterval); return; }
+      document.getElementById('input-editor').value += lines[idx] + '\n';
+      idx++;
+      document.getElementById('stream-bar').style.width = (idx / lines.length * 100) + '%';
+      document.getElementById('stream-count').textContent = idx + ' / ' + lines.length + ' events';
+      if (idx === lines.length) { clearInterval(liveStreamInterval); setTimeout(runAnalysis, 500); }
+    }, 300);
+  } else { clearInterval(liveStreamInterval); }
+}
