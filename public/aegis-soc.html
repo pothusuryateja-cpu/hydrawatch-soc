@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AegisSOC Enterprise — Autonomous AI-Tier 1 SOC Platform</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { mono: ['"JetBrains Mono"','"Fira Code"','ui-monospace','monospace'] },
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body{font-family:'Inter',sans-serif;background:#0f172a}
+  .font-mono{font-family:'JetBrains Mono',monospace}
+  .glow-pulse{animation:glowPulse 2s ease-in-out infinite}
+  @keyframes glowPulse{0%,100%{box-shadow:0 0 8px rgba(6,182,212,.4)}50%{box-shadow:0 0 24px rgba(6,182,212,.8)}}
+  .shimmer{background:linear-gradient(90deg,#06b6d4,#8b5cf6,#06b6d4);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 3s ease-in-out infinite}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  .agent-code-block{position:relative;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px;margin:8px 0;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;color:#e2e8f0}
+  .agent-code-block .copy-btn{position:absolute;top:6px;right:6px;opacity:0;transition:opacity .2s}
+  .agent-code-block:hover .copy-btn{opacity:1}
+  #agent-chat-messages::-webkit-scrollbar{width:6px}
+  #agent-chat-messages::-webkit-scrollbar-track{background:transparent}
+  #agent-chat-messages::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+  #agent-chat-messages::-webkit-scrollbar-thumb:hover{background:#475569}
+  .cvss-bar{transition:width .8s ease-out}
+  .live-dot{animation:livePulse 1s ease-in-out infinite}
+  @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .fade-in{animation:fadeIn .3s ease-out}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .highlight-pulse{animation:highlightPulse 1.5s ease-out}
+  @keyframes highlightPulse{0%{box-shadow:0 0 0 0 rgba(6,182,212,.7)}70%{box-shadow:0 0 0 12px rgba(6,182,212,0)}100%{box-shadow:0 0 0 0 rgba(6,182,212,0)}}
+  .mitre-cell{transition:all .2s}
+  .mitre-cell.active{background:rgba(6,182,212,.15);border-color:#06b6d4}
+</style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen">
+<!-- HEADER -->
+<header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center glow-pulse">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white tracking-tight">AegisSOC Enterprise <span class="text-xs font-normal text-slate-500">v2.0</span></h1>
+        <p class="text-[11px] text-slate-500 font-mono">Autonomous AI-Tier 1 SOC Platform</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span> Systems Online</span>
+      <button onclick="openSettings()" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title="Settings">&#9881;</button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900/50 to-slate-900">
+  <div class="max-w-5xl mx-auto px-4 py-12 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono mb-6">AEGIS SECURITY COPILOT &amp; SOC TRIAGE SUITE</div>
+    <h2 class="text-3xl sm:text-4xl font-bold mb-3"><span class="shimmer">Next-Gen Automated Threat Triage</span></h2>
+    <p class="text-slate-400 text-base max-w-2xl mx-auto mb-8">Static Analysis &amp; Real-Time Incident Remediation — powered by heuristic AI, MITRE ATT&CK mapping, CVSS v3.1 scoring, and autonomous SOAR playbooks.</p>
+    <div class="flex flex-wrap justify-center gap-3 mb-8">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs text-slate-300">Automated CWE / OWASP Mapping</span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs text-slate-300">Sub-second IOC Extraction</span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs text-slate-300">Context-Aware Remediation Agent</span>
+    </div>
+    <div class="flex justify-center gap-3">
+      <button onclick="heroGetStarted()" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-semibold text-sm hover:from-cyan-500 hover:to-indigo-500 transition-all glow-pulse">Get Started</button>
+      <button onclick="heroTryDemo()" class="px-6 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-sm hover:bg-slate-700 transition-all">Try Demo Scan</button>
+    </div>
+  </div>
+</section>
+
+<!-- INPUT CONSOLE -->
+<section id="input-console" class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex gap-1 border-b border-slate-800 mb-6">
+    <button onclick="switchTab('code')" id="tab-code" class="px-4 py-2.5 text-sm font-medium text-cyan-400 border-b-2 border-cyan-400 transition-colors">Source Code Scanner</button>
+    <button onclick="switchTab('email')" id="tab-email" class="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors">Phishing Email Analyzer</button>
+    <button onclick="switchTab('logs')" id="tab-logs" class="px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors">Server &amp; Firewall Logs</button>
+  </div>
+  <div class="flex flex-wrap gap-2 mb-4">
+    <button onclick="loadDemo(1)" class="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium hover:bg-rose-500/20 transition">Demo 1: SQLi + AWS Keys</button>
+    <button onclick="loadDemo(2)" class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition">Demo 2: Phishing Email</button>
+    <button onclick="loadDemo(3)" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition">Demo 3: SSH Brute-Force</button>
+  </div>
+  <div id="log-format-selector" class="hidden mb-4 flex flex-wrap gap-2">
+    <span class="text-xs text-slate-500 font-mono self-center mr-2">FORMAT:</span>
+    <button onclick="setLogFormat('auth')" class="log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" data-fmt="auth">auth.log</button>
+    <button onclick="setLogFormat('nginx')" class="log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-slate-700 text-slate-400 border border-slate-600" data-fmt="nginx">Nginx/Apache</button>
+    <button onclick="setLogFormat('cloudtrail')" class="log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-slate-700 text-slate-400 border border-slate-600" data-fmt="cloudtrail">CloudTrail</button>
+    <button onclick="setLogFormat('windows')" class="log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-slate-700 text-slate-400 border border-slate-600" data-fmt="windows">Windows 4625</button>
+  </div>
+  <div class="relative">
+    <textarea id="input-editor" rows="14" placeholder="Paste your source code, email headers, or server logs here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-sm text-slate-300 resize-y focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 placeholder-slate-600 transition-all"></textarea>
+    <div class="absolute bottom-3 right-3 flex gap-2">
+      <button onclick="clearInput()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs hover:bg-slate-700 transition">Clear</button>
+      <button onclick="runAnalysis()" class="px-4 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 text-white text-xs font-semibold hover:from-cyan-500 hover:to-indigo-500 transition">Analyze</button>
+    </div>
+  </div>
+  <div id="live-stream-controls" class="hidden mt-3 flex items-center gap-3">
+    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="live-stream-toggle" class="w-4 h-4 accent-cyan-500 rounded" onchange="toggleLiveStream()"><span class="text-xs text-slate-400 font-mono">Simulate Live Ingestion</span></label>
+    <div id="stream-progress" class="hidden flex-1 max-w-xs">
+      <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="stream-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all" style="width:0%"></div></div>
+      <span id="stream-count" class="text-[10px] text-slate-500 font-mono mt-0.5">0 / 0 events</span>
+    </div>
+  </div>
+</section>
+<!-- RESULTS -->
+<section id="results-section" class="hidden max-w-7xl mx-auto px-4 pb-12">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center">
+      <h3 class="text-xs font-mono text-slate-500 mb-3 uppercase tracking-wider">Threat Index</h3>
+      <div class="relative w-32 h-32">
+        <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90"><circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="8"/><circle id="threat-arc" cx="60" cy="60" r="50" fill="none" stroke="#06b6d4" stroke-width="8" stroke-linecap="round" stroke-dasharray="0 314"/></svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center"><span id="threat-score" class="text-3xl font-bold text-white font-mono">0</span><span class="text-[10px] text-slate-500">/100</span></div>
+      </div>
+      <span id="severity-badge" class="mt-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-slate-700 text-slate-400">N/A</span>
+    </div>
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 lg:col-span-2">
+      <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-mono text-slate-500 uppercase tracking-wider">CVSS v3.1 Score</h3><span id="cvss-score" class="text-2xl font-bold font-mono text-white">0.0</span></div>
+      <div id="cvss-vector" class="text-[11px] font-mono text-slate-500 mb-4 break-all">CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N</div>
+      <div class="space-y-2">
+        <div class="flex items-center gap-3"><span class="text-[11px] text-slate-400 w-28 font-mono">Confidentiality</span><div class="flex-1 h-2 bg-slate-900 rounded-full overflow-hidden"><div id="cvss-c" class="cvss-bar h-full bg-red-500 rounded-full" style="width:0%"></div></div><span id="cvss-c-val" class="text-[10px] font-mono text-slate-500 w-8">None</span></div>
+        <div class="flex items-center gap-3"><span class="text-[11px] text-slate-400 w-28 font-mono">Integrity</span><div class="flex-1 h-2 bg-slate-900 rounded-full overflow-hidden"><div id="cvss-i" class="cvss-bar h-full bg-amber-500 rounded-full" style="width:0%"></div></div><span id="cvss-i-val" class="text-[10px] font-mono text-slate-500 w-8">None</span></div>
+        <div class="flex items-center gap-3"><span class="text-[11px] text-slate-400 w-28 font-mono">Availability</span><div class="flex-1 h-2 bg-slate-900 rounded-full overflow-hidden"><div id="cvss-a" class="cvss-bar h-full bg-rose-500 rounded-full" style="width:0%"></div></div><span id="cvss-a-val" class="text-[10px] font-mono text-slate-500 w-8">None</span></div>
+        <div class="flex items-center gap-3"><span class="text-[11px] text-slate-400 w-28 font-mono">Exploitability</span><div class="flex-1 h-2 bg-slate-900 rounded-full overflow-hidden"><div id="cvss-e" class="cvss-bar h-full bg-cyan-500 rounded-full" style="width:0%"></div></div><span id="cvss-e-val" class="text-[10px] font-mono text-slate-500 w-8">0.0</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+      <h3 class="text-xs font-mono text-slate-500 mb-3 uppercase tracking-wider">MITRE ATT&amp;CK / OWASP Classification</h3>
+      <div id="classification-tags" class="flex flex-wrap gap-2"></div>
+      <div class="mt-3"><span class="text-[11px] text-slate-500 font-mono">Attack Vector: </span><span id="attack-vector" class="text-sm text-slate-300">—</span></div>
+    </div>
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-mono text-slate-500 uppercase tracking-wider">Indicators of Compromise</h3><button onclick="copyIOCs()" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 hover:bg-slate-600 transition font-mono">Copy IOCs</button></div>
+      <div id="ioc-tags" class="flex flex-wrap gap-1.5"></div>
+    </div>
+  </div>
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 mb-6">
+    <h3 class="text-xs font-mono text-slate-500 mb-4 uppercase tracking-wider">MITRE ATT&amp;CK Navigator</h3>
+    <div id="mitre-matrix" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2"></div>
+  </div>
+  <div id="diff-section" class="hidden bg-slate-800/50 border border-slate-700 rounded-xl p-5 mb-6">
+    <div class="flex items-center justify-between mb-4"><h3 class="text-xs font-mono text-slate-500 uppercase tracking-wider">Secure Patch Viewer</h3><button onclick="applyPatch()" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition">Apply Secure Patch</button></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><div class="flex items-center gap-2 mb-2"><span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-[11px] font-mono text-red-400">Vulnerable Code</span></div><pre id="diff-old" class="bg-slate-950 border border-red-500/20 rounded-lg p-3 text-xs font-mono text-slate-400 overflow-x-auto max-h-80 overflow-y-auto whitespace-pre-wrap"></pre></div>
+      <div><div class="flex items-center gap-2 mb-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-[11px] font-mono text-emerald-400">Patched Code</span></div><pre id="diff-new" class="bg-slate-950 border border-emerald-500/20 rounded-lg p-3 text-xs font-mono text-slate-400 overflow-x-auto max-h-80 overflow-y-auto whitespace-pre-wrap"></pre></div>
+    </div>
+  </div>
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-5 mb-6"><h3 class="text-xs font-mono text-slate-500 mb-4 uppercase tracking-wider">Findings</h3><div id="findings-list" class="space-y-3"></div></div>
+  <div class="bg-slate-800/50 border border-slate-700 rounded-xl mb-6">
+    <div class="flex border-b border-slate-700">
+      <button onclick="switchRemTab('remediation')" id="remtab-remediation" class="px-4 py-3 text-xs font-medium text-cyan-400 border-b-2 border-cyan-400 transition">Remediation</button>
+      <button onclick="switchRemTab('soar')" id="remtab-soar" class="px-4 py-3 text-xs font-medium text-slate-500 hover:text-slate-300 transition">SOAR Playbooks</button>
+      <button onclick="switchRemTab('sigma')" id="remtab-sigma" class="px-4 py-3 text-xs font-medium text-slate-500 hover:text-slate-300 transition">Sigma Rules</button>
+    </div>
+    <div id="rem-content-remediation" class="p-5"><div id="remediation-steps" class="space-y-2 mb-4"></div><div id="remediation-code" class="hidden"><div class="flex items-center justify-between mb-2"><span class="text-[11px] font-mono text-slate-500">REMEDIATION CODE</span><button onclick="copyRemCode()" class="text-[10px] px-2 py-1 rounded bg-slate-700 text-slate-400 hover:bg-slate-600 transition font-mono">Copy Fix</button></div><pre class="bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap"><code id="rem-code-content"></code></pre></div></div>
+    <div id="rem-content-soar" class="hidden p-5"><div id="soar-content" class="space-y-4"></div></div>
+    <div id="rem-content-sigma" class="hidden p-5"><div id="sigma-content" class="space-y-4"></div></div>
+  </div>
+  <div class="flex gap-3 mb-6">
+    <button onclick="exportTxt()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-700 transition">Export Incident Report (.txt)</button>
+    <button onclick="exportJson()" class="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium hover:bg-slate-700 transition">Export Full Report (.json)</button>
+  </div>
+</section>
+<section id="empty-state" class="max-w-3xl mx-auto px-4 py-20 text-center">
+  <p class="text-slate-600 text-4xl mb-4">⚠</p>
+  <p class="text-slate-500 text-sm">Paste security data above or load a demo sample to begin analysis.</p>
+</section>
+<footer class="border-t border-slate-800 mt-8"><div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between text-[11px] text-slate-600 font-mono"><span>AegisSOC Enterprise v2.0</span><span>Powered by Aegis AI Agent</span></div></footer>
+<!-- AGENT FAB -->
+<button id="agent-fab" onclick="toggleAgentDrawer(event)" class="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all glow-pulse cursor-pointer">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+  <span class="text-sm font-semibold hidden sm:inline">Chat with Aegis</span>
+  <span class="flex items-center gap-1 text-[10px] text-emerald-300"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> Ready</span>
+</button>
+
+<!-- OVERLAY -->
+<div id="agent-overlay" class="hidden fixed inset-0 bg-black/50 z-50" onclick="closeAgentDrawer(event)"></div>
+
+<!-- DRAWER -->
+<div id="agent-drawer" class="fixed top-0 right-0 h-screen w-full sm:w-[420px] bg-slate-900 z-50 flex flex-col overflow-hidden shadow-2xl border-l border-slate-800 translate-x-full transition-transform duration-300" style="display:none;">
+  <div class="flex-none p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-white">Aegis Copilot</div>
+        <div id="agent-connection-status" class="text-[10px] text-emerald-400 font-mono flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> Connected — SOC Tier-1 Analyst</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <button id="clear-chat-btn" onclick="clearChat(event)" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Clear chat">✕</button>
+      <button id="force-close-agent-btn" onclick="closeAgentDrawer(event)" type="button" aria-label="Close Agent" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer transition-colors relative z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  </div>
+  <div id="agent-context-bar" class="flex-none p-2 px-4 bg-slate-950/80 border-b border-slate-800 text-[10px] font-mono text-slate-500">Active Context: <span id="context-label" class="text-slate-400">No scan loaded</span></div>
+  <div class="flex-none px-4 py-2 border-b border-slate-800 overflow-x-auto flex gap-1.5">
+    <button onclick="agentQuickAction('stix')" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-cyan-400 border border-slate-700 hover:bg-slate-700 transition whitespace-nowrap">STIX Bundle</button>
+    <button onclick="agentQuickAction('brief')" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-amber-400 border border-slate-700 hover:bg-slate-700 transition whitespace-nowrap">Executive Brief</button>
+    <button onclick="agentQuickAction('decode')" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-rose-400 border border-slate-700 hover:bg-slate-700 transition whitespace-nowrap">Decode Payloads</button>
+    <button onclick="agentQuickAction('fix')" class="px-2 py-1 rounded bg-slate-800 text-[10px] text-emerald-400 border border-slate-700 hover:bg-slate-700 transition whitespace-nowrap">Get Secure Code</button>
+  </div>
+  <div id="agent-chat-messages" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"></div>
+  <form id="agent-chat-form" onsubmit="sendAgentMessage(event)" class="flex-none p-4 border-t border-slate-800 bg-slate-950/60">
+    <div class="flex gap-2">
+      <input id="agent-chat-input" type="text" placeholder="Ask Aegis about the current scan..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50">
+      <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 text-white hover:bg-cyan-500 transition">➤</button>
+    </div>
+  </form>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onclick="closeSettings(event)">
+  <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-white">Settings</h3>
+      <button onclick="closeSettings(event)" class="p-1 text-slate-400 hover:text-white transition">✕</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-mono text-slate-400 mb-1.5">OpenRouter API Key</label>
+        <input id="settings-api-key" type="password" placeholder="sk-or-v1-..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-500/50">
+        <p class="text-[10px] text-slate-600 mt-1">Free models available — no payment required</p>
+      </div>
+      <div>
+        <label class="block text-xs font-mono text-slate-400 mb-1.5">Model</label>
+        <select id="settings-model" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50">
+          <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+          <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free)</option>
+          <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+        </select>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="saveSettings()" class="flex-1 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-semibold hover:bg-cyan-500 transition">Save</button>
+        <button onclick="closeSettings(event)" class="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MITRE MODAL -->
+<div id="mitre-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="closeMitreModal(event)">
+  <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-lg w-full p-6 shadow-2xl" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="mitre-modal-title" class="text-lg font-bold text-white"></h3>
+      <button onclick="closeMitreModal(event)" class="p-1 text-slate-400 hover:text-white transition">✕</button>
+    </div>
+    <div id="mitre-modal-body" class="text-sm text-slate-300 space-y-3"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// AegisSOC Enterprise v2.0 — Core Engine
+// ══════════════════════════════════════════════════════════════
+
+let activeTab = 'code';
+let lastResult = null;
+let lastInput = '';
+let agentContext = { scanType: null, result: null, input: null };
+let codeBlockCounter = 0;
+let liveStreamInterval = null;
+let currentLogFormat = 'auth';
+const originalInput = { code: '', email: '', logs: '' };
+const chatHistory = [];
+
+// ── Demo Samples ──
+const DEMOS = {
+  code: `import os
+import psycopg2
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# Hardcoded AWS key (BAD!)
+AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form["username"]
+    password = request.form["password"]
+
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+    )
+    cursor = conn.cursor()
+
+    # SQL Injection vulnerability
+    query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
+    cursor.execute(query)
+
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if user:
+        return "Login successful"
+    else:
+        return "Invalid credentials"`,
+  email: `From: "Support <support@paypa1-security.com>"
+To: "user@example.com"
+Subject: Urgent: Verify Your Account Now
+Date: Thu, 20 Aug 2026 08:15:00 +0530
+Received: from mail.paypa1-security.com (unknown [185.234.219.42])
+          by mx.example.com (Postfix) with ESMTP id ABC123
+          for <user@example.com>; Thu, 20 Aug 2026 08:15:02 +0000 (UTC)
+Authentication-Results: mx.example.com;
+       spf=fail (sender IP is 185.234.219.42) smtp.mailfrom=paypa1-security.com;
+       dkim=fail header.d=paypa1-security.com;
+       dmarc=fail action=none header.from=paypa1-security.com
+Received-SPF: Fail (sender IP is 185.234.219.42)
+DKIM-Signature: v=1; a=rsa-sha256; d=paypa1-security.com; s=selector1;
+        h=from:to:subject:date;
+        bh=invalidhashhere==;
+        b=suspicious_signature_data_here
+Reply-To: "Accounts Team <accounts@secure-paypal-verify.net>"
+Return-Path: <bounce@secure-paypal-verify.net>`,
+  logs: `Aug 20 07:50:01 server sshd[12345]: Failed password for invalid user admin from 192.168.1.105 port 54322 ssh2
+Aug 20 07:50:03 server sshd[12346]: Failed password for invalid user root from 192.168.1.105 port 54323 ssh2
+Aug 20 07:50:05 server sshd[12347]: Failed password for invalid user test from 192.168.1.105 port 54324 ssh2
+Aug 20 07:50:07 server sshd[12348]: Failed password for invalid user ubuntu from 192.168.1.105 port 54325 ssh2
+Aug 20 07:50:10 server sshd[12349]: Failed password for invalid user admin from 192.168.1.105 port 54326 ssh2
+Aug 20 07:51:22 server sudo: pam_unix(sudo:auth): authentication failure; logname=www-data uid=33 euid=0 tty=/dev/pts/0 ruser=www-data rhost= user=www-data
+Aug 20 07:51:25 server sudo: www-data : user NOT in sudoers ; TTY=pts/0 ; PWD=/var/www/html ; USER=root ; COMMAND=/bin/bash`
+};
+
+// ── Tab Switching ──
+function switchTab(tab) {
+  activeTab = tab;
+  ['code','email','logs'].forEach(t => {
+    const btn = document.getElementById('tab-' + t);
+    if (t === tab) { btn.className = 'px-4 py-2.5 text-sm font-medium text-cyan-400 border-b-2 border-cyan-400 transition-colors'; }
+    else { btn.className = 'px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors'; }
+  });
+  const placeholders = { code: 'Paste your source code here...', email: 'Paste raw email headers here...', logs: 'Paste server/firewall logs here...' };
+  document.getElementById('input-editor').placeholder = placeholders[tab];
+  document.getElementById('log-format-selector').classList.toggle('hidden', tab !== 'logs');
+  document.getElementById('live-stream-controls').classList.toggle('hidden', tab !== 'logs');
+  if (originalInput[tab]) document.getElementById('input-editor').value = originalInput[tab];
+}
+
+function loadDemo(n) {
+  const tab = n === 1 ? 'code' : n === 2 ? 'email' : 'logs';
+  switchTab(tab);
+  document.getElementById('input-editor').value = DEMOS[tab];
+  originalInput[tab] = DEMOS[tab];
+  runAnalysis();
+  document.getElementById('input-console').scrollIntoView({ behavior: 'smooth' });
+}
+
+function heroGetStarted() {
+  document.getElementById('input-console').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => { const ed = document.getElementById('input-editor'); ed.classList.add('highlight-pulse'); setTimeout(() => ed.classList.remove('highlight-pulse'), 2000); }, 500);
+}
+function heroTryDemo() { switchTab('code'); document.getElementById('input-editor').value = DEMOS.code; originalInput.code = DEMOS.code; setTimeout(() => runAnalysis(), 600); }
+
+function setLogFormat(fmt) {
+  currentLogFormat = fmt;
+  document.querySelectorAll('.log-fmt-btn').forEach(b => {
+    if (b.dataset.fmt === fmt) b.className = 'log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
+    else b.className = 'log-fmt-btn px-2 py-1 rounded text-xs font-mono bg-slate-700 text-slate-400 border border-slate-600';
+  });
+}
+
+function clearInput() { document.getElementById('input-editor').value = ''; }
+
+// ═══ ANALYSIS ENGINE ═══
+function runAnalysis() {
+  const input = document.getElementById('input-editor').value.trim();
+  if (!input) return;
+  lastInput = input;
+  originalInput[activeTab] = input;
+  let result;
+  if (activeTab === 'code') result = analyzeCode(input);
+  else if (activeTab === 'email') result = analyzeEmailHeaders(input);
+  else result = analyzeLogs(input);
+  lastResult = result;
+  renderResults(result);
+  syncAgentContext(result, input);
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('results-section').classList.remove('hidden');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// ── Code Analyzer ──
+function analyzeCode(code) {
+  var findings = [], iocs = [], techniques = [];
+  if (/['"].*['"].*\+\s*(username|password|query|input|req)/i.test(code) || /SELECT\s+.*\+\s*/i.test(code)) {
+    findings.push({ title: 'SQL Injection via String Concatenation', description: 'Raw string concatenation in SQL query allows full database extraction.', severity: 'Critical' });
+    techniques.push('T1190'); iocs.push('SQL concat pattern detected');
+  }
+  if (/AKIA[A-Z0-9]{16}/i.test(code)) { var m = code.match(/AKIA[A-Z0-9]{16}/i); findings.push({ title: 'Hardcoded AWS Access Key', description: 'High-entropy AWS Access Key ID found directly in source code.', severity: 'Critical' }); iocs.push(m[0]); techniques.push('T1552'); }
+  if (/['"]wJalr[A-Za-z0-9+/=]{30,}['"]/i.test(code)) { findings.push({ title: 'Hardcoded AWS Secret Access Key', description: 'AWS Secret Key detected in plaintext.', severity: 'Critical' }); techniques.push('T1552'); iocs.push('AWS_SECRET_ACCESS_KEY'); }
+  if (/eval\s*\(/i.test(code)) { findings.push({ title: 'Use of eval()', description: 'eval() can execute arbitrary code.', severity: 'High' }); techniques.push('T1059'); }
+  if (/os\.system\(|subprocess\.(?:call|run)\(/i.test(code)) { findings.push({ title: 'Potential Command Injection', description: 'System call detected. User input could enable RCE.', severity: 'High' }); techniques.push('T1059'); }
+  if (findings.length === 0) findings.push({ title: 'No Critical Issues Detected', description: 'No known vulnerability patterns found.', severity: 'Low' });
+  return { scanType: 'code', findings: findings, iocs: iocs.filter(function(v,i,s){return s.indexOf(v)===i}), techniques: techniques.filter(function(v,i,s){return s.indexOf(v)===i}),
+    attackVector: 'SQL Injection & Secret Exposure', classification: 'OWASP A03:2021 / CWE-89, CWE-798',
+    remediationCode: '# Parametrized query - secure replacement\nimport os\nimport psycopg2\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n# Use environment variables\nAWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")\nAWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")\n\n@app.route("/login", methods=["POST"])\ndef login():\n    username = request.form["username"]\n    password = request.form["password"]\n    if not username or not password or len(username) > 64:\n        return "Invalid input", 400\n    conn = psycopg2.connect(host=os.getenv("DB_HOST"), database=os.getenv("DB_NAME"), user=os.getenv("DB_USER"), password=os.getenv("DB_PASS"))\n    cursor = conn.cursor()\n    cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))\n    user = cursor.fetchone()\n    cursor.close()\n    conn.close()\n    return "Login successful" if user else "Invalid credentials"',
+    diff: { old: 'query = "SELECT * FROM users WHERE username = \'\'" + username + "\'\'"\ncursor.execute(query)\n\nAWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"\nAWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"', new: '# Parameterized query\ncursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))\n\n# Secrets from environment\nAWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")\nAWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")' },
+    soar: generateCodeSOAR(findings, iocs) };
+}
+
+// ── Email Analyzer ──
+function analyzeEmailHeaders(headers) {
+  var findings = [], iocs = [], techniques = [];
+  if (/spf=fail/i.test(headers)) { findings.push({ title: 'SPF Authentication Failure', description: 'Sender IP not authorized to send on behalf of the domain.', severity: 'High' }); techniques.push('T1566'); }
+  if (/dkim=fail/i.test(headers)) { findings.push({ title: 'DKIM Authentication Failure', description: 'Email signature verification failed.', severity: 'High' }); techniques.push('T1566'); }
+  if (/dmarc=fail/i.test(headers)) { findings.push({ title: 'DMARC Policy Failure', description: 'Email failed DMARC alignment.', severity: 'Critical' }); techniques.push('T1566'); }
+  var fromMatch = headers.match(/From:\s*"?([^"<\n]+)"?\s*<?([^>\n]*)>?/i);
+  var replyMatch = headers.match(/Reply-To:\s*"?[^"<]*"?\s*<([^>]+)>/i);
+  if (fromMatch && replyMatch) {
+    var fd = (fromMatch[2]||fromMatch[1]).trim().split('@')[1]; var rd = replyMatch[1].split('@')[1];
+    if (fd && rd && fd !== rd) { findings.push({ title: 'From/Reply-To Domain Mismatch', description: 'Reply-To domain differs from sender - phishing indicator.', severity: 'High' }); iocs.push(rd); techniques.push('T1566'); }
+  }
+  var returnMatch = headers.match(/Return-Path:\s*<([^>]+)>/);
+  if (returnMatch) { var rp = returnMatch[1].split('@')[1]; iocs.push(rp); }
+  var ipMatch = headers.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g);
+  if (ipMatch) ipMatch.forEach(function(ip){ if (iocs.indexOf(ip)===-1) iocs.push(ip); });
+  var fromDomain = fromMatch ? (fromMatch[2]||fromMatch[1]).trim().split('@')[1] : '';
+  if (fromDomain && iocs.indexOf(fromDomain)===-1) iocs.push(fromDomain);
+  if (findings.length === 0) findings.push({ title: 'No Phishing Indicators', description: 'No spoofing or auth failures found.', severity: 'Low' });
+  return { scanType: 'email', findings: findings, iocs: iocs.filter(function(v,i,s){return s.indexOf(v)===i}), techniques: techniques.filter(function(v,i,s){return s.indexOf(v)===i}),
+    attackVector: 'Phishing Email with Spoofed Sender', classification: 'MITRE T1566; OWASP A07:2021',
+    remediationCode: '# DMARC/SPF/DKIM DNS Configuration\n\n# 1. SPF Record\nv=spf1 include:_spf.google.com ip4:203.0.113.0/24 -all\n\n# 2. DKIM Record\nselector._domainkey.yourdomain.com TXT "v=DKIM1; k=rsa; p=MIIBIjANBgkqh..."\n\n# 3. DMARC Record (strict)\n_dmarc.yourdomain.com TXT "v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com; fo=1; adkim=s; aspf=s"\n\n# 4. MTA-STS\n_mta-sts.yourdomain.com TXT "v=STSv1; id=20260820"',
+    diff: null, soar: generateEmailSOAR(findings, iocs) };
+}
+
+// ── Log Analyzer ──
+function analyzeLogs(logs) {
+  var findings = [], iocs = [], techniques = [];
+  var failedSSH = logs.match(/Failed password.*from (\S+)/gi);
+  if (failedSSH && failedSSH.length >= 3) {
+    var ips = []; var users = [];
+    failedSSH.forEach(function(l){ var m = l.match(/from (\S+)/); if(m && ips.indexOf(m[1])===-1) ips.push(m[1]); var u = l.match(/for (?:invalid user )?(\S+)/); if(u && users.indexOf(u[1])===-1) users.push(u[1]); });
+    findings.push({ title: 'SSH Brute-Force Detected (' + failedSSH.length + ' attempts)', description: 'Multiple failed SSH attempts from ' + ips.join(', ') + '. Targeted: ' + users.join(', '), severity: 'Critical' });
+    ips.forEach(function(ip){ iocs.push(ip); }); techniques.push('T1110');
+  }
+  if (/user NOT in sudoers|COMMAND=.*\/bin\/(ba)?sh/i.test(logs)) { findings.push({ title: 'Privilege Escalation Attempt', description: 'Non-privileged user attempted sudo.', severity: 'High' }); techniques.push('T1548'); }
+  if (/Accepted (?:password|publickey)/i.test(logs)) { findings.push({ title: 'Successful Login Post-Brute-Force', description: 'SSH login near brute-force attempts.', severity: 'Critical' }); techniques.push('T1078'); }
+  if (findings.length === 0) findings.push({ title: 'No Critical Events', description: 'No brute-force or escalation patterns.', severity: 'Low' });
+  return { scanType: 'logs', findings: findings, iocs: iocs.filter(function(v,i,s){return s.indexOf(v)===i}), techniques: techniques.filter(function(v,i,s){return s.indexOf(v)===i}),
+    attackVector: 'SSH Brute-Force & Privilege Escalation', classification: 'MITRE T1110; T1548',
+    remediationCode: '# /etc/ssh/sshd_config\nPermitRootLogin no\nPasswordAuthentication no\nMaxAuthTries 3\n\n# /etc/fail2ban/jail.local\n[sshd]\nenabled = true\nport = ssh\nfilter = sshd\nlogpath = /var/log/auth.log\nmaxretry = 3\nbantime = 3600\n\n# UFW\nufw default deny incoming\nufw allow ssh\nufw enable',
+    diff: null, soar: generateLogSOAR(findings, iocs) };
+}
+
+// ── CVSS v3.1 Calculator ──
+function calculateCVSS(findings) {
+  var hasRCE = findings.some(function(f){return /injection|command|sql/i.test(f.title)});
+  var hasSecret = findings.some(function(f){return /key|secret|credential|password/i.test(f.title)});
+  var hasPhishing = findings.some(function(f){return /phishing|spoof|spf|dkim|dmarc/i.test(f.title)});
+  var hasBrute = findings.some(function(f){return /brute|ssh.*fail/i.test(f.title)});
+  var C='N',I='N',A='N',AV='N',AC='H',PR='N',UI='R',S='U';
+  if (hasRCE) { C='H';I='H';A='H';AV='N';AC='L';PR='N';UI='N'; }
+  else if (hasSecret) { C='H';I='L';A='N';AV='L';AC='L';PR='L';UI='R'; }
+  else if (hasPhishing) { C='L';I='L';A='N';AV='N';AC='H';PR='N';UI='R'; }
+  else if (hasBrute) { C='N';I='L';A='L';AV='N';AC='L';PR='N';UI='N'; }
+  var imp = {N:0,L:0.22,H:0.56}, exp = {N:0.20,L:0.55,H:0.85}, priv = {N:0.85,L:0.62,H:0.27};
+  var iscBase = 1-((1-imp[C])*(1-imp[I])*(1-imp[A]));
+  var isc = S==='S' ? 7.52*(iscBase-0.029)-3.25*Math.pow(iscBase-0.02,15) : 6.42*iscBase;
+  var expScore = 8.22*exp[AV]*exp[AC]*priv[PR]*exp[UI];
+  var base = Math.min(Math.max(Math.round((isc+expScore)*10)/10,0),10);
+  return { score: base, vector: 'CVSS:3.1/AV:'+AV+'/AC:'+AC+'/PR:'+PR+'/UI:'+UI+'/S:'+S+'/C:'+C+'/I:'+I+'/A:'+A, impacts:{C:C,I:I,A:A}, exploitability: expScore.toFixed(1) };
+}
+
+// ── SOAR Generators ──
+function generateCodeSOAR(f,i) { var ips=i.filter(function(x){return /^\d/.test(x)}); return { firewall: ips.map(function(ip){return 'iptables -A INPUT -s '+ip+' -j DROP\nufw deny from '+ip}).join('\n\n')||'No attacker IPs', fail2ban: '[sshd]\nenabled=true\nport=ssh\nfilter=sshd\nlogpath=/var/log/auth.log\nmaxretry=3\nbantime=3600\n\n[recidive]\nenabled=true\nfilter=recidive\nlogpath=/var/log/fail2ban.log\nbantime=604800\nmaxretry=3' }; }
+function generateEmailSOAR(f,i) { var d=i.filter(function(x){return /[a-z]/i.test(x)&&!/^\d/.test(x)}); return { firewall: d.map(function(x){return '0.0.0.0 '+x}).join('\n'), fail2ban: '[postfix-spoof]\nenabled=true\nlogpath=/var/log/mail.log\nmaxretry=1\nbantime=86400' }; }
+function generateLogSOAR(f,i) { var ips=i.filter(function(x){return /^\d/.test(x)}); return { firewall: ips.map(function(ip){return 'iptables -A INPUT -s '+ip+' -j DROP\nufw deny from '+ip}).join('\n\n'), fail2ban: '[sshd]\nenabled=true\nport=ssh\nfilter=sshd\nlogpath=/var/log/auth.log\nmaxretry=3\nbantime=3600\n\n[recidive]\nenabled=true\nfilter=recidive\nlogpath=/var/log/fail2ban.log\nbantime=604800\nmaxretry=3' }; }
+// ── MITRE ATT&CK Data ──
+var MITRE_TECHNIQUES = {
+  'T1566': { name: 'Phishing', tactic: 'Initial Access', desc: 'Adversaries send phishing messages to gain access.', subs: ['T1566.001 Spearphishing Attachment', 'T1566.002 Spearphishing Link'], detect: 'Monitor email gateway logs, inspect URL reputation.' },
+  'T1190': { name: 'Exploit Public-Facing App', tactic: 'Initial Access', desc: 'Adversaries exploit vulnerabilities in internet-facing apps.', subs: ['CVE scanning', 'WAF bypass'], detect: 'Deploy WAF, monitor application logs.' },
+  'T1078': { name: 'Valid Accounts', tactic: 'Initial Access', desc: 'Adversaries use stolen credentials.', subs: ['T1078.001 Default Accounts'], detect: 'Monitor impossible travel, enforce MFA.' },
+  'T1059': { name: 'Command & Scripting Interpreter', tactic: 'Execution', desc: 'Adversaries execute commands or scripts.', subs: ['T1059.006 Python'], detect: 'Monitor process creation, EDR telemetry.' },
+  'T1053': { name: 'Scheduled Task/Job', tactic: 'Execution', desc: 'Adversaries abuse task schedulers.', subs: ['T1053.003 Cron'], detect: 'Audit scheduled tasks.' },
+  'T1548': { name: 'Abuse Elevation Control', tactic: 'Privilege Escalation', desc: 'Adversaries circumvent UAC or abuse sudo.', subs: ['T1548.003 Sudo Caching'], detect: 'Monitor sudo logs.' },
+  'T1027': { name: 'Obfuscated Files', tactic: 'Defense Evasion', desc: 'Adversaries hide malicious artifacts.', subs: ['T1027.001 Binary Padding'], detect: 'Static analysis, entropy scanning.' },
+  'T1110': { name: 'Brute Force', tactic: 'Credential Access', desc: 'Adversaries use brute-force techniques.', subs: ['T1110.001 Password Guessing'], detect: 'Monitor auth failures, deploy fail2ban.' },
+  'T1552': { name: 'Unsecured Credentials', tactic: 'Credential Access', desc: 'Adversaries search for insecure credentials.', subs: ['T1552.001 Credentials In Files'], detect: 'Scan repos for secrets.' },
+  'T1046': { name: 'Network Service Scan', tactic: 'Discovery', desc: 'Adversaries scan for open ports.', subs: ['Port scanning'], detect: 'IDS alerts for port scans.' },
+  'T1569': { name: 'System Services', tactic: 'Execution', desc: 'Adversaries abuse system services.', subs: ['T1569.002 Service Execution'], detect: 'Monitor service creation.' }
+};
+
+function renderMitreMatrix(activeTechniques) {
+  var matrix = document.getElementById('mitre-matrix');
+  matrix.innerHTML = '';
+  var tactics = {};
+  Object.keys(MITRE_TECHNIQUES).forEach(function(id) {
+    var t = MITRE_TECHNIQUES[id];
+    if (!tactics[t.tactic]) tactics[t.tactic] = [];
+    tactics[t.tactic].push({ id: id, name: t.name, desc: t.desc });
+  });
+  Object.keys(tactics).forEach(function(tactic) {
+    var col = document.createElement('div');
+    col.className = 'space-y-1.5';
+    col.innerHTML = '<div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-2">' + tactic + '</div>';
+    tactics[tactic].forEach(function(t) {
+      var isActive = activeTechniques.indexOf(t.id) !== -1;
+      var badge = document.createElement('div');
+      badge.className = 'mitre-cell p-2 rounded-lg border text-xs cursor-pointer transition-all ' + (isActive ? 'active border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-slate-700 bg-slate-800/50 text-slate-500 hover:border-slate-600');
+      badge.innerHTML = '<div class="font-mono font-bold text-[11px]">' + t.id + '</div><div class="text-[10px] mt-0.5">' + t.name + '</div>';
+      badge.onclick = function() { showMitreModal(t.id); };
+      col.appendChild(badge);
+    });
+    matrix.appendChild(col);
+  });
+}
+
+function showMitreModal(techId) {
+  var t = MITRE_TECHNIQUES[techId];
+  if (!t) return;
+  document.getElementById('mitre-modal-title').textContent = techId + ' - ' + t.name;
+  document.getElementById('mitre-modal-body').innerHTML =
+    '<div><span class="text-slate-500 font-mono text-xs">TACTIC:</span> <span class="text-cyan-400">' + t.tactic + '</span></div>' +
+    '<p>' + t.desc + '</p>' +
+    '<div><span class="text-slate-500 font-mono text-xs">SUB-TECHNIQUES:</span></div>' +
+    '<ul class="list-disc list-inside text-slate-400 text-xs">' + t.subs.map(function(s){return '<li>'+s+'</li>'}).join('') + '</ul>' +
+    '<div><span class="text-slate-500 font-mono text-xs">DETECTION:</span></div>' +
+    '<p class="text-xs text-slate-400 bg-slate-900 p-2 rounded-lg">' + t.detect + '</p>';
+  document.getElementById('mitre-modal').classList.remove('hidden');
+}
+function closeMitreModal(e) { if (e.target === document.getElementById('mitre-modal') || e.target.closest('button')) document.getElementById('mitre-modal').classList.add('hidden'); }
+
+// ── Render Results ──
+function renderResults(result) {
+  var total = result.findings.reduce(function(s, f) { return s + (f.severity === 'Critical' ? 25 : f.severity === 'High' ? 15 : f.severity === 'Medium' ? 8 : 3); }, 0);
+  var score = Math.min(total, 100);
+  var severity = score >= 70 ? 'CRITICAL' : score >= 40 ? 'MEDIUM' : 'LOW';
+  var sevColor = severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : severity === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+  var arcColor = severity === 'CRITICAL' ? '#ef4444' : severity === 'MEDIUM' ? '#f59e0b' : '#06b6d4';
+
+  document.getElementById('threat-score').textContent = score;
+  document.getElementById('threat-arc').setAttribute('stroke-dasharray', (score * 3.14) + ' 314');
+  document.getElementById('threat-arc').setAttribute('stroke', arcColor);
+  var sevBadge = document.getElementById('severity-badge');
+  sevBadge.textContent = severity;
+  sevBadge.className = 'mt-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ' + sevColor;
+
+  var cvss = calculateCVSS(result.findings);
+  document.getElementById('cvss-score').textContent = cvss.score.toFixed(1);
+  document.getElementById('cvss-score').style.color = cvss.score >= 7 ? '#ef4444' : cvss.score >= 4 ? '#f59e0b' : '#22c55e';
+  document.getElementById('cvss-vector').textContent = cvss.vector;
+  var impactMap = { N: 0, L: 33, H: 100 };
+  document.getElementById('cvss-c').style.width = impactMap[cvss.impacts.C] + '%';
+  document.getElementById('cvss-c-val').textContent = cvss.impacts.C === 'N' ? 'None' : cvss.impacts.C === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-i').style.width = impactMap[cvss.impacts.I] + '%';
+  document.getElementById('cvss-i-val').textContent = cvss.impacts.I === 'N' ? 'None' : cvss.impacts.I === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-a').style.width = impactMap[cvss.impacts.A] + '%';
+  document.getElementById('cvss-a-val').textContent = cvss.impacts.A === 'N' ? 'None' : cvss.impacts.A === 'L' ? 'Low' : 'High';
+  document.getElementById('cvss-e').style.width = (parseFloat(cvss.exploitability) / 8.22 * 100) + '%';
+  document.getElementById('cvss-e-val').textContent = cvss.exploitability;
+
+  var tagsHtml = result.classification.split(/;\s*/).map(function(c) { return '<span class="px-2 py-1 rounded-lg bg-slate-700/80 text-[11px] font-mono text-slate-300 border border-slate-600">' + c.trim() + '</span>'; }).join('');
+  document.getElementById('classification-tags').innerHTML = tagsHtml;
+  document.getElementById('attack-vector').textContent = result.attackVector;
+
+  var iocHtml = result.iocs.map(function(i) { return '<span class="px-2 py-0.5 rounded bg-slate-950/80 text-[11px] font-mono text-cyan-400 border border-slate-700">' + i + '</span>'; }).join('');
+  document.getElementById('ioc-tags').innerHTML = iocHtml || '<span class="text-xs text-slate-600">No IOCs extracted</span>';
+
+  renderMitreMatrix(result.techniques);
+
+  if (result.diff) {
+    document.getElementById('diff-section').classList.remove('hidden');
+    document.getElementById('diff-old').textContent = result.diff.old;
+    document.getElementById('diff-new').textContent = result.diff.new;
+  } else { document.getElementById('diff-section').classList.add('hidden'); }
+
+  document.getElementById('findings-list').innerHTML = result.findings.map(function(f) {
+    var fc = f.severity === 'Critical' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : f.severity === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : f.severity === 'Medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    return '<div class="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 fade-in"><div class="flex items-center justify-between mb-1"><span class="font-semibold text-sm text-white">' + f.title + '</span><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border ' + fc + '">' + f.severity + '</span></div><p class="text-xs text-slate-400">' + f.description + '</p></div>';
+  }).join('');
+
+  document.getElementById('remediation-steps').innerHTML = '<ul class="space-y-1">' + result.findings.map(function(f) {
+    return '<li class="text-sm text-slate-300 flex items-start gap-2"><span class="text-cyan-400 mt-0.5">&gt;</span> Address: ' + f.title + '</li>';
+  }).join('') + '</ul>';
+
+  if (result.remediationCode) {
+    document.getElementById('remediation-code').classList.remove('hidden');
+    document.getElementById('rem-code-content').textContent = result.remediationCode;
+  }
+
+  if (result.soar) {
+    document.getElementById('soar-content').innerHTML =
+      '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Linux Firewall Rules</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + result.soar.firewall + '</pre></div>' +
+      '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Fail2Ban Configuration</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + result.soar.fail2ban + '</pre></div>';
+  }
+
+  var sigma = genSigma(result.findings, result.techniques, result.iocs);
+  var suricata = genSuricata(result.findings, result.iocs);
+  document.getElementById('sigma-content').innerHTML =
+    '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Sigma Detection Rule</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + sigma + '</pre></div>' +
+    '<div><h4 class="text-xs font-mono text-slate-500 mb-2 uppercase">Suricata / Snort Rule</h4><pre class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">' + suricata + '</pre></div>';
+
+  switchRemTab('remediation');
+}
+
+function switchRemTab(tab) {
+  ['remediation','soar','sigma'].forEach(function(t) {
+    document.getElementById('rem-content-' + t).classList.toggle('hidden', t !== tab);
+    var btn = document.getElementById('remtab-' + t);
+    if (t === tab) { btn.className = 'px-4 py-3 text-xs font-medium text-cyan-400 border-b-2 border-cyan-400 transition'; }
+    else { btn.className = 'px-4 py-3 text-xs font-medium text-slate-500 hover:text-slate-300 transition'; }
+  });
+}
+
+function genSigma(f,t,i) {
+  var title = f[0] ? f[0].title : 'Security Event';
+  return 'title: ' + title + '\nstatus: experimental\nauthor: AegisSOC\ndate: ' + new Date().toISOString().split('T')[0] + '\ntags:\n' + t.map(function(x){return '  - '+x}).join('\n') + '\nlogsource:\n  category: authentication\n  product: linux\ndetection:\n  selection:\n    EventID: '+(t.indexOf('T1110')!==-1?'4625':'syslog')+'\n  condition: selection\nlevel: '+(f.some(function(x){return x.severity==='Critical'})?'critical':'high');
+}
+function genSuricata(f,i) { return i.filter(function(x){return /^\d{1,3}(\.\d{1,3}){3}$/.test(x)}).map(function(ip){return 'alert tcp '+ip+' any -> $HOME_NET 22 (msg:"AegisSOC - SSH Brute Force from '+ip+'"; threshold:type both,track by_src,count 5,seconds 60; sid:1000001; rev:1;)'}).join('\n')||'No network IOCs'; }
+
+// ── Copy / Export ──
+function copyIOCs() { if (!lastResult) return; navigator.clipboard.writeText(lastResult.iocs.join(', ')); }
+function copyRemCode() { navigator.clipboard.writeText(document.getElementById('rem-code-content').textContent); }
+function applyPatch() { if (lastResult && lastResult.diff) { document.getElementById('input-editor').value = DEMOS.code + '\n\n# PATCHED VERSION\n' + lastResult.diff.new; } }
+
+function exportTxt() {
+  if (!lastResult) return;
+  var r = lastResult;
+  var txt = 'AEGISSOC ENTERPRISE - INCIDENT REPORT\n' + '='.repeat(50) + '\nDate: ' + new Date().toISOString() + '\nScan Type: ' + r.scanType.toUpperCase() + '\nAttack Vector: ' + r.attackVector + '\nClassification: ' + r.classification + '\n\nTHREAT SCORE: ' + document.getElementById('threat-score').textContent + '/100 (' + document.getElementById('severity-badge').textContent + ')\nCVSS v3.1: ' + document.getElementById('cvss-score').textContent + '\n\nFINDINGS:\n' + r.findings.map(function(f,i){return (i+1)+'. ['+f.severity.toUpperCase()+'] '+f.title+'\n   '+f.description}).join('\n\n') + '\n\nIOCs:\n' + r.iocs.map(function(i){return '  * '+i}).join('\n') + '\n\nREMEDIATION:\n' + (r.remediationCode || 'N/A');
+  download(txt, 'aegis-incident-report.txt', 'text/plain');
+}
+function exportJson() {
+  if (!lastResult) return;
+  var r = lastResult;
+  var json = JSON.stringify({ timestamp: new Date().toISOString(), scanType: r.scanType, threatScore: parseInt(document.getElementById('threat-score').textContent), severity: document.getElementById('severity-badge').textContent, cvss: { score: document.getElementById('cvss-score').textContent, vector: document.getElementById('cvss-vector').textContent }, attackVector: r.attackVector, classification: r.classification, mitreTechniques: r.techniques, iocs: r.iocs, findings: r.findings }, null, 2);
+  download(json, 'aegis-full-report.json', 'application/json');
+}
+function download(content, filename, type) { var blob = new Blob([content], { type: type }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href); }
+
+// ── Live Stream ──
+function toggleLiveStream() {
+  var on = document.getElementById('live-stream-toggle').checked;
+  document.getElementById('stream-progress').classList.toggle('hidden', !on);
+  if (on) {
+    var lines = DEMOS.logs.split('\n');
+    var idx = 0;
+    document.getElementById('stream-bar').style.width = '0%';
+    document.getElementById('stream-count').textContent = '0 / ' + lines.length + ' events';
+    document.getElementById('input-editor').value = '';
+    liveStreamInterval = setInterval(function() {
+      if (idx >= lines.length) { clearInterval(liveStreamInterval); return; }
+      document.getElementById('input-editor').value += lines[idx] + '\n';
+      idx++;
+      document.getElementById('stream-bar').style.width = (idx / lines.length * 100) + '%';
+      document.getElementById('stream-count').textContent = idx + ' / ' + lines.length + ' events';
+      if (idx === lines.length) { clearInterval(liveStreamInterval); setTimeout(runAnalysis, 500); }
+    }, 300);
+  } else { clearInterval(liveStreamInterval); }
+}
+// ══════════════════════════════════════════════════════════════
+// Aegis Copilot Agent — Drawer, Chat, Settings, OpenRouter API
+// ══════════════════════════════════════════════════════════════
+
+// ── Agent Context ──
+function syncAgentContext(result, input) {
+  agentContext.scanType = result.scanType;
+  agentContext.result = result;
+  agentContext.input = input;
+  var label = document.getElementById('context-label');
+  if (label && result) {
+    var scanLabel = result.scanType === 'code' ? 'Source Code' : result.scanType === 'email' ? 'Email Headers' : 'Server Logs';
+    var score = lastResult ? document.getElementById('threat-score').textContent : '0';
+    label.textContent = scanLabel + ' | ' + result.attackVector + ' | Score: ' + score + '/100';
+  }
+}
+
+// ── Drawer Controls ──
+function toggleAgentDrawer(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  var drawer = document.getElementById('agent-drawer');
+  var overlay = document.getElementById('agent-overlay');
+  if (!drawer) return;
+  var isOpen = drawer.style.display === 'flex';
+  if (isOpen) {
+    closeAgentDrawer(e);
+  } else {
+    drawer.style.display = 'flex';
+    drawer.classList.remove('translate-x-full');
+    drawer.classList.add('translate-x-0');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'block';
+    }
+    lucide.createIcons();
+  }
+}
+
+function closeAgentDrawer(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  var drawer = document.getElementById('agent-drawer');
+  var overlay = document.getElementById('agent-overlay');
+  if (drawer) {
+    drawer.classList.add('translate-x-full');
+    drawer.classList.remove('translate-x-0');
+    setTimeout(function() { drawer.style.display = 'none'; }, 300);
+  }
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  }
+}
+
+// ── Chat Rendering ──
+function formatAgentText(text) {
+  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // fenced code blocks
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+    var id = 'code-block-' + (++codeBlockCounter);
+    return '<div class="agent-code-block"><div class="flex items-center justify-between mb-1"><span class="text-[10px] text-slate-500 font-mono">' + (lang || 'code') + '</span><button onclick="copyAgentCode(\'' + id + '\')" class="copy-btn px-2 py-0.5 rounded bg-slate-700 text-[10px] text-slate-400 hover:bg-slate-600">Copy</button></div><pre id="' + id + '" class="whitespace-pre-wrap text-xs">' + code.trim() + '</pre></div>';
+  });
+  // inline code
+  text = text.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 text-xs font-mono">$1</code>');
+  // bold
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-semibold">$1</strong>');
+  // line breaks
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+function copyAgentCode(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    navigator.clipboard.writeText(el.textContent);
+    var btn = el.parentElement.querySelector('.copy-btn');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = orig; }, 1500);
+    }
+  }
+}
+
+function appendChat(html, isUser) {
+  var container = document.getElementById('agent-chat-messages');
+  if (!container) return;
+  var div = document.createElement('div');
+  div.className = isUser ? 'flex justify-end' : 'flex justify-start';
+  var bubble = document.createElement('div');
+  bubble.className = isUser
+    ? 'max-w-[85%] bg-cyan-600/20 border border-cyan-500/30 rounded-xl px-4 py-3 text-sm text-slate-200'
+    : 'max-w-[85%] bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300';
+  bubble.innerHTML = html;
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── Chat Submission (with OpenRouter API) ──
+function sendAgentMessage(e) {
+  e.preventDefault();
+  var input = document.getElementById('agent-chat-input');
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendChat(msg, true);
+  chatHistory.push({ role: 'user', content: msg });
+
+  var apiKey = localStorage.getItem('aegis_api_key');
+  var model = localStorage.getItem('aegis_model') || 'meta-llama/llama-3.3-70b-instruct:free';
+
+  if (apiKey) {
+    sendToOpenRouter(msg, apiKey, model);
+  } else {
+    setTimeout(function() {
+      var response = generateLocalResponse(msg);
+      appendChat(formatAgentText(response), false);
+      chatHistory.push({ role: 'assistant', content: response });
+    }, 600);
+  }
+}
+
+async function sendToOpenRouter(msg, apiKey, model) {
+  var statusEl = document.getElementById('agent-connection-status');
+  if (statusEl) statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 live-dot"></span> Thinking...';
+
+  var systemPrompt = buildSystemPrompt();
+  var messages = [{ role: 'system', content: systemPrompt }].concat(chatHistory);
+
+  try {
+    var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
+        'HTTP-Referer': window.location.href,
+        'X-Title': 'AegisSOC Enterprise'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        max_tokens: 2048,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      var errData = {};
+      try { errData = await response.json(); } catch(e) {}
+      throw new Error(errData.error ? errData.error.message : 'API Error ' + response.status);
+    }
+
+    var data = await response.json();
+    var reply = data.choices && data.choices[0] ? data.choices[0].message.content : 'No response from model.';
+    appendChat(formatAgentText(reply), false);
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    appendChat(formatAgentText('**API Error:** ' + err.message + '\n\nPlease check your API key in Settings (\u2699).'));
+  }
+
+  if (statusEl) statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> Connected';
+}
+
+function buildSystemPrompt() {
+  var ctx = 'You are Aegis Copilot, an expert SOC Tier-1 AI Security Analyst inside AegisSOC Enterprise.\n';
+  ctx += 'You analyze security scans, provide remediation, generate detection rules, and help with incident response.\n';
+  ctx += 'Be concise, professional, and provide actionable guidance. Use markdown formatting.\n\n';
+  if (agentContext.result) {
+    var r = agentContext.result;
+    ctx += 'CURRENT SCAN CONTEXT:\n';
+    ctx += '- Scan Type: ' + r.scanType + '\n';
+    ctx += '- Attack Vector: ' + r.attackVector + '\n';
+    ctx += '- Classification: ' + r.classification + '\n';
+    ctx += '- Findings:\n';
+    r.findings.forEach(function(f) {
+      ctx += '  * [' + f.severity + '] ' + f.title + ': ' + f.description + '\n';
+    });
+    ctx += '- IOCs: ' + r.iocs.join(', ') + '\n';
+    ctx += '- MITRE Techniques: ' + r.techniques.join(', ') + '\n';
+    if (r.remediationCode) ctx += '- Remediation code available\n';
+  } else {
+    ctx += '\nNo scan context loaded yet. The user may ask general security questions.\n';
+  }
+  return ctx;
+}
+
+function generateLocalResponse(msg) {
+  var lower = msg.toLowerCase();
+  var r = agentContext.result;
+
+  if (!r) return 'No scan context loaded. Run a scan first or load a demo, then I can help analyze the results.';
+
+  if (lower.match(/fix|patch|secure|remediat/)) {
+    return '**Secure Fix Available**\n\nAegis has detected the following remediation:\n\n```python\n' + (r.remediationCode || '# Run a scan to generate fixes') + '\n```\n\nClick **Apply Secure Patch** in the results to apply this fix.';
+  }
+  if (lower.match(/ioc|indicator|compromise|extract/)) {
+    return '**Extracted IOCs:**\n\n' + r.iocs.map(function(i) { return '- `' + i + '`'; }).join('\n') + '\n\nCopy all IOCs using the **Copy IOCs** button in the results panel.';
+  }
+  if (lower.match(/mitre|attack|technique|tactic/)) {
+    return '**MITRE ATT&CK Techniques:**\n\n' + r.techniques.map(function(t) {
+      var tech = MITRE_TECHNIQUES[t];
+      return '- **' + t + '** (' + (tech ? tech.name : 'Unknown') + ') \u2014 ' + (tech ? tech.tactic : '');
+    }).join('\n') + '\n\nClick any technique in the Navigator matrix for full details.';
+  }
+  if (lower.match(/score|cvss|threat|severity|risk/)) {
+    return '**Threat Assessment:**\n\n- Threat Index: **' + document.getElementById('threat-score').textContent + '/100**\n- Severity: **' + document.getElementById('severity-badge').textContent + '**\n- CVSS v3.1: **' + document.getElementById('cvss-score').textContent + '**\n- Vector: `' + document.getElementById('cvss-vector').textContent + '`';
+  }
+  if (lower.match(/stix|threat intel|bundle/)) {
+    return generateSTIXBundle();
+  }
+  if (lower.match(/executive|brief|ciso|report|email/)) {
+    return generateExecutiveBrief();
+  }
+  if (lower.match(/decode|base64|payload|shellcode/)) {
+    return generateDecodeHelp();
+  }
+  if (lower.match(/sigma|detection|rule|siem/)) {
+    var sigma = genSigma(r.findings, r.techniques, r.iocs);
+    return '**Sigma Detection Rule:**\n\n```yaml\n' + sigma + '\n```\n\nCopy this rule to your SIEM for detection.';
+  }
+  if (lower.match(/soar|firewall|fail2ban|containment/)) {
+    return '**SOAR Containment Playbook:**\n\nNavigate to the **SOAR Playbooks** tab in the results panel for full firewall rules, fail2ban config, and containment procedures.';
+  }
+  if (lower.match(/dmarc|spf|dkim|email.*secur|spoof/)) {
+    return '**Email Security Configuration:**\n\n```dns\n# SPF Record\nv=spf1 include:_spf.google.com ip4:203.0.113.0/24 -all\n\n# DMARC Record (strict)\n_dmarc.yourdomain.com TXT "v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com; fo=1; adkim=s; aspf=s"\n\n# DKIM Record\nselector._domainkey.yourdomain.com TXT "v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY"\n```\n\nReplace yourdomain.com with your actual domain.';
+  }
+
+  return 'I can help with the current scan. Try asking about:\n- **"Fix this code"** \u2014 get secure remediation\n- **"Extract IOCs"** \u2014 list all indicators\n- **"MITRE techniques"** \u2014 mapped attack stages\n- **"Threat score"** \u2014 CVSS and severity\n- **"SOAR playbook"** \u2014 containment rules\n- **"Email security"** \u2014 DMARC/SPF/DKIM config\n- **"STIX bundle"** \u2014 threat intel export\n- **"Executive brief"** \u2014 CISO report';
+}
+
+function generateSTIXBundle() {
+  var r = agentContext.result;
+  if (!r) return 'No scan context available.';
+  var bundle = {
+    type: 'bundle',
+    id: 'bundle--' + Date.now(),
+    spec_version: '2.1',
+    created: new Date().toISOString(),
+    objects: r.iocs.map(function(ioc) {
+      var stixType = /^\d{1,3}(\.\d{1,3}){3}$/.test(ioc) ? 'ipv4-addr' : /@/.test(ioc) ? 'email-addr' : /[a-z]/.test(ioc) ? 'domain-name' : 'artifact';
+      return {
+        type: 'indicator',
+        spec_version: '2.1',
+        id: 'indicator--' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+        created: new Date().toISOString(),
+        name: ioc,
+        pattern: '[' + stixType + ":value = '" + ioc + "']",
+        pattern_type: 'stix',
+        valid_from: new Date().toISOString(),
+        labels: ['malicious-activity']
+      };
+    }).concat([{
+      type: 'report',
+      spec_version: '2.1',
+      id: 'report--' + Date.now(),
+      created: new Date().toISOString(),
+      name: 'AegisSOC Incident Report - ' + r.attackVector,
+      object_refs: [],
+      content: 'Threat Score: ' + document.getElementById('threat-score').textContent + '/100'
+    }])
+  };
+  return '**STIX 2.1 Threat Intel Bundle:**\n\n```json\n' + JSON.stringify(bundle, null, 2).substring(0, 1500) + '\n```';
+}
+
+function generateExecutiveBrief() {
+  var r = agentContext.result;
+  if (!r) return 'No scan context available.';
+  var scanType = r.scanType === 'code' ? 'source code' : r.scanType === 'email' ? 'email headers' : 'server logs';
+  return '**Executive Security Briefing**\n\n' +
+    '**To:** CISO / Security Director\n' +
+    '**From:** Aegis SOC Automated Triage\n' +
+    '**Date:** ' + new Date().toLocaleDateString() + '\n' +
+    '**Classification:** ' + document.getElementById('severity-badge').textContent + '\n\n' +
+    '**Executive Summary:**\n' +
+    'Analysis of ' + scanType + ' identified **' + r.findings.length + ' finding(s)** with a threat score of **' +
+    document.getElementById('threat-score').textContent + '/100**.\n\n' +
+    '**Attack Vector:** ' + r.attackVector + '\n' +
+    '**CVSS v3.1:** ' + document.getElementById('cvss-score').textContent + '\n\n' +
+    '**Key Findings:**\n' + r.findings.map(function(f) { return '- [' + f.severity + '] ' + f.title; }).join('\n') + '\n\n' +
+    '**Recommended Actions:**\n' + r.findings.map(function(f) { return '- Address: ' + f.title; }).join('\n') + '\n\n' +
+    '**IOCs Identified:** ' + r.iocs.length + '\n' +
+    '**MITRE Techniques:** ' + r.techniques.join(', ');
+}
+
+function generateDecodeHelp() {
+  var r = agentContext.result;
+  if (!r) return 'No scan context available.';
+  return '**Payload Analysis:**\n\nExtracted IOCs from this scan:\n' +
+    r.iocs.map(function(i) {
+      if (/^[A-Za-z0-9+/=]{20,}$/.test(i)) {
+        try { return '- `' + i + '` \u2192 Decoded: `' + atob(i) + '`'; }
+        catch (e) { return '- `' + i + '` \u2192 (not valid base64)'; }
+      }
+      if (/^%[0-9a-f]{2}/i.test(i)) {
+        try { return '- `' + i + '` \u2192 Decoded: `' + decodeURIComponent(i) + '`'; }
+        catch (e) { return '- `' + i + '` \u2192 (not valid URL encoding)'; }
+      }
+      return '- `' + i + '`';
+    }).join('\n');
+}
+
+// ── Quick Actions ──
+function agentQuickAction(action) {
+  var queries = {
+    stix: 'Generate a STIX 2.1 threat intel bundle for this scan',
+    brief: 'Draft an executive security briefing for the CISO',
+    decode: 'Decode and analyze all extracted payloads and IOCs',
+    fix: 'Provide the full secure remediation code for all findings'
+  };
+  if (queries[action]) {
+    document.getElementById('agent-chat-input').value = queries[action];
+    sendAgentMessage(new Event('submit'));
+  }
+}
+
+// ── Chat Clear ──
+function clearChat(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  chatHistory.length = 0;
+  var container = document.getElementById('agent-chat-messages');
+  if (container) container.innerHTML = '';
+  appendChat('Chat cleared. Ask me anything about the current scan context.', false);
+}
+
+// ── Settings ──
+function openSettings() {
+  var modal = document.getElementById('settings-modal');
+  var keyInput = document.getElementById('settings-api-key');
+  var modelSelect = document.getElementById('settings-model');
+  if (modal) modal.classList.remove('hidden');
+  if (keyInput) keyInput.value = localStorage.getItem('aegis_api_key') || '';
+  if (modelSelect) modelSelect.value = localStorage.getItem('aegis_model') || 'meta-llama/llama-3.3-70b-instruct:free';
+}
+
+function closeSettings(e) {
+  if (e) e.stopPropagation();
+  var modal = document.getElementById('settings-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function saveSettings() {
+  var key = document.getElementById('settings-api-key').value.trim();
+  var model = document.getElementById('settings-model').value;
+  if (key) localStorage.setItem('aegis_api_key', key);
+  else localStorage.removeItem('aegis_api_key');
+  localStorage.setItem('aegis_model', model);
+  closeSettings();
+  var statusEl = document.getElementById('agent-connection-status');
+  if (statusEl && key) {
+    statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> API Connected';
+  }
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+  lucide.createIcons();
+  var closeBtn = document.getElementById('force-close-agent-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeAgentDrawer, true);
+  var overlay = document.getElementById('agent-overlay');
+  if (overlay) overlay.addEventListener('click', closeAgentDrawer, true);
+  var clearBtn = document.getElementById('clear-chat-btn');
+  if (clearBtn) clearBtn.addEventListener('click', clearChat, true);
+});
+
+</script>
+</body>
+</html>
